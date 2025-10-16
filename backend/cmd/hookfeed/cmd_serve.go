@@ -61,10 +61,16 @@ func (s *ServeCmd) serve(ctx context.Context, cmd *cli.Command) error {
 	// Load configuration from environment
 	cfg := LoadConfig()
 
+	// Override feed file path from command line flag if provided
+	if s.flags.config != "" {
+		cfg.ServiceCfg.FeedFile = s.flags.config
+	}
+
 	log.Info().
 		Str("host", cfg.Web.Host).
 		Str("port", cfg.Web.Port).
 		Str("database", cfg.Postgres.Host).
+		Str("feedFile", cfg.ServiceCfg.FeedFile).
 		Msg("configuration loaded")
 
 	// Initialize database connection with migrations

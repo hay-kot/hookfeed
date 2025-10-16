@@ -7,7 +7,10 @@ middleware:
 # Feed definitions
 feeds:
   - name: "Production Alerts"
-    slug: "prod-alerts"
+    id: "prod-alerts"
+    keys:
+      - 1ftyjSfiZott986g1rWykD # github
+      - KcvgA8pwwmY3XZgEAO4KX3 # discord
     description: "Critical production alerts from monitoring systems"
 
     middleware:
@@ -22,7 +25,10 @@ feeds:
       maxAgeDays: 90
 
   - name: "GitHub Events"
-    slug: "github"
+    id: "github-events"
+    keys:
+      - 1ftyjSfiZott983g1rWykD # github
+      - KcvgA8pwwmY3XZ1EAO4KX3 # discord
     description: "GitHub webhook events (push, PR, issues, etc.)"
 
     middleware:
@@ -35,21 +41,11 @@ feeds:
       maxCount: 5000
       maxAgeDays: 30
 
-  - name: "Internal Notifications"
-    slug: "secret-internal-notifications-key-123"
-    description: "Internal system notifications (slug is used as secret key)"
-
-    # No middleware for this feed
-    middleware: []
-
-    # Null = no adapters (raw mode)
-    adapters: null
-
-    retention:
-      maxAgeDays: 7
-
   - name: "Development Testing"
     slug: "dev-test"
+    keys:
+      - 3ftyjSfiZott983g1rWykD # github
+      - fcvgA8pwwmY3XZ1EAO4KX3 # discord
     description: "Feed for development and testing purposes"
 
     # Test with multiple adapters (tried in order)

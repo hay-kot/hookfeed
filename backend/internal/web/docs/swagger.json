@@ -8,6 +8,37 @@
     },
     "basePath": "/api",
     "paths": {
+        "/v1/feeds": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Get all feeds configured in the system",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Feeds"
+                ],
+                "summary": "Get all feeds",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/dtos.Feed"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/v1/info": {
             "get": {
                 "description": "Get the status of the service",
@@ -228,6 +259,41 @@
         }
     },
     "definitions": {
+        "dtos.Feed": {
+            "type": "object",
+            "properties": {
+                "adapters": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "description": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "keys": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "middleware": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "name": {
+                    "type": "string"
+                },
+                "retention": {
+                    "$ref": "#/definitions/dtos.Retention"
+                }
+            }
+        },
         "dtos.PasswordReset": {
             "type": "object",
             "required": [
@@ -252,6 +318,17 @@
             "properties": {
                 "email": {
                     "type": "string"
+                }
+            }
+        },
+        "dtos.Retention": {
+            "type": "object",
+            "properties": {
+                "maxAgeDays": {
+                    "type": "integer"
+                },
+                "maxCount": {
+                    "type": "integer"
                 }
             }
         },

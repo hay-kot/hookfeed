@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/hay-kot/hookfeed/backend/internal/core/feeds"
 	"github.com/hay-kot/hookfeed/backend/internal/core/tasks"
 	"github.com/hay-kot/hookfeed/backend/internal/data/db"
 	"github.com/rs/zerolog"
@@ -40,7 +41,7 @@ func NewService(
 		}
 		defer file.Close()
 
-		feedFile, err := FeedFileLoad(file)
+		feedFile, err := feeds.Load(file)
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse feed file: %w", err)
 		}
@@ -50,7 +51,9 @@ func NewService(
 			Int("middleware", len(feedFile.Middleware)).
 			Msg("loaded feed configuration")
 
-		feedService = NewFeedService(*feedFile)
+		cache := feeds.NewCache(feedFile)
+
+		feedService = NewFeedService(cache)
 	}
 
 	return &Service{

@@ -102,6 +102,7 @@ func (ib *WebAPI) routes() chi.Router {
 	adapter := mid.ErrorHandler(ib.l)
 
 	userctrl := handlers.NewAuthController(ib.services.Users, ib.services.Passwords)
+	feedctrl := handlers.NewFeedController(ib.services.Feeds)
 
 	mux.HandleFunc("GET /docs/swagger.json", adapter.Adapt(docs.SwaggerJSON))
 	mux.HandleFunc("GET /api/v1/info", adapter.Adapt(handlers.Info(dtos.StatusResponse{Build: ib.build})))
@@ -121,6 +122,8 @@ func (ib *WebAPI) routes() chi.Router {
 
 		r.Get("/api/v1/users/self", adapter.Adapt(userctrl.Self))
 		r.Patch("/api/v1/users/self", adapter.Adapt(userctrl.Update))
+
+		r.Get("/api/v1/feeds", adapter.Adapt(feedctrl.GetAll))
 
 		// $scaffold_inject_routes
 	})
