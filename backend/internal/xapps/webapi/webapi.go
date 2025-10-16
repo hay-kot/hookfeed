@@ -103,6 +103,7 @@ func (ib *WebAPI) routes() chi.Router {
 
 	userctrl := handlers.NewAuthController(ib.services.Users, ib.services.Passwords)
 	feedctrl := handlers.NewFeedController(ib.services.Feeds)
+	webhookctrl := handlers.NewWebhookController(ib.services.Webhooks)
 
 	mux.HandleFunc("GET /docs/swagger.json", adapter.Adapt(docs.SwaggerJSON))
 	mux.HandleFunc("GET /api/v1/info", adapter.Adapt(handlers.Info(dtos.StatusResponse{Build: ib.build})))
@@ -111,6 +112,9 @@ func (ib *WebAPI) routes() chi.Router {
 		httpSwagger.PersistAuthorization(true),
 		httpSwagger.URL("/docs/swagger.json"),
 	))
+
+	// Webhook ingestion endpoint (no auth required)
+	mux.Post("/hooks/{key}", adapter.Adapt(webhookctrl.HandleWebhook))
 
 	mux.Post("/api/v1/users/login", adapter.Adapt(userctrl.Authenticate))
 	mux.Post("/api/v1/users/register", adapter.Adapt(userctrl.Register))

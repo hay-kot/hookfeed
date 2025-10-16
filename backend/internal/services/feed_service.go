@@ -7,7 +7,11 @@ import (
 )
 
 type FeedService struct {
-	cache *feeds.Cache
+	cache *feeds.Cache // exported for webhook service access
+}
+
+func (f *FeedService) GetCache() *feeds.Cache {
+	return f.cache
 }
 
 func NewFeedService(cache *feeds.Cache) *FeedService {

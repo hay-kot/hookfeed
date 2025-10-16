@@ -86,3 +86,16 @@ export interface DtosUserUpdate {
    */
   username?: string;
 }
+
+export interface DtosWebhookResponse {
+  feedId?: string;
+  messageId?: string;
+  success?: boolean;
+}
+
+export interface ServerErrorResp {
+  data?: any;
+  message?: string;
+  requestId?: string;
+  statusCode?: number;
+}

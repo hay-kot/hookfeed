@@ -23,6 +23,7 @@ type Service struct {
 	Users     *UserService
 	Passwords *PasswordService
 	Feeds     *FeedService
+	Webhooks  *WebhookService
 	// $scaffold_inject_service
 }
 
@@ -39,7 +40,7 @@ func NewService(
 		if err != nil {
 			return nil, fmt.Errorf("failed to open feed file: %w", err)
 		}
-		defer file.Close()
+		defer func() { _ = file.Close() }()
 
 		feedFile, err := feeds.Load(file)
 		if err != nil {
@@ -56,11 +57,14 @@ func NewService(
 		feedService = NewFeedService(cache)
 	}
 
+	webhookService := NewWebhookService(l, feedService)
+
 	return &Service{
 		Admin:     NewAdminService(l, db),
 		Users:     NewUserService(l, db),
 		Passwords: NewPasswordService(cfg, l, db, queue),
 		Feeds:     feedService,
+		Webhooks:  webhookService,
 		// $scaffold_inject_constructor
 	}, nil
 }

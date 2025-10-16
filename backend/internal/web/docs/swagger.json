@@ -8,6 +8,71 @@
     },
     "basePath": "/api",
     "paths": {
+        "/hooks/{slug}": {
+            "post": {
+                "description": "Accepts webhooks in any format and processes them according to feed configuration",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Webhooks"
+                ],
+                "summary": "Receive webhook",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Feed key (from feed configuration)",
+                        "name": "key",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Webhook payload (any JSON)",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                ],
+                "responses": {
+                    "202": {
+                        "description": "Accepted",
+                        "schema": {
+                            "$ref": "#/definitions/dtos.WebhookResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResp"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResp"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResp"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResp"
+                        }
+                    }
+                }
+            }
+        },
         "/v1/feeds": {
             "get": {
                 "security": [
@@ -430,6 +495,35 @@
                     "type": "string",
                     "maxLength": 128,
                     "minLength": 6
+                }
+            }
+        },
+        "dtos.WebhookResponse": {
+            "type": "object",
+            "properties": {
+                "feedId": {
+                    "type": "string"
+                },
+                "messageId": {
+                    "type": "string"
+                },
+                "success": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "server.ErrorResp": {
+            "type": "object",
+            "properties": {
+                "data": {},
+                "message": {
+                    "type": "string"
+                },
+                "requestId": {
+                    "type": "string"
+                },
+                "statusCode": {
+                    "type": "integer"
                 }
             }
         }
