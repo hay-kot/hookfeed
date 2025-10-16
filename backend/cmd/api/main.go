@@ -62,7 +62,10 @@ func run() error {
 
 	taskRunner := tasker.New()
 
-	services := services.NewService(cfg.ServiceCfg, log.Logger, queries, taskRunner)
+	services, err := services.NewService(cfg.ServiceCfg, log.Logger, queries, taskRunner)
+	if err != nil {
+		return fmt.Errorf("failed to initialize services: %w", err)
+	}
 
 	webAPI := webapi.New(log.Logger, build(), cfg.Web, services)
 

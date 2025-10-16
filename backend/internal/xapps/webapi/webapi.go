@@ -66,7 +66,7 @@ func (ib *WebAPI) Start(ctx context.Context) error {
 		_ = server.Shutdown(context.Background())
 	}()
 
-	ib.l.Info().Str("docs", "http://"+ib.cfg.Addr()+"/docs/swagger").Msg("starting service")
+	ib.l.Info().Str("docs", "http://"+ib.cfg.Addr()+"/docs/index.html").Msg("starting service")
 	err := server.ListenAndServe()
 	if errors.Is(err, http.ErrServerClosed) {
 		return nil
@@ -121,18 +121,6 @@ func (ib *WebAPI) routes() chi.Router {
 
 		r.Get("/api/v1/users/self", adapter.Adapt(userctrl.Self))
 		r.Patch("/api/v1/users/self", adapter.Adapt(userctrl.Update))
-
-		packinglistCtrl := handlers.NewPackingListController(ib.services.PackingLists)
-		r.HandleFunc("GET /api/v1/packing-lists", adapter.Adapt(packinglistCtrl.GetAll))
-		r.HandleFunc("POST /api/v1/packing-lists", adapter.Adapt(packinglistCtrl.Create))
-		r.HandleFunc("GET /api/v1/packing-lists/{id}", adapter.Adapt(packinglistCtrl.Get))
-		r.HandleFunc("PATCH /api/v1/packing-lists/{id}", adapter.Adapt(packinglistCtrl.Update))
-		r.HandleFunc("DELETE /api/v1/packing-lists/{id}", adapter.Adapt(packinglistCtrl.Delete))
-
-		packinglistitemCtrl := handlers.NewPackingListItemController(ib.services.PackingListItems)
-		r.HandleFunc("POST /api/v1/packing-lists/{id}/items", adapter.Adapt(packinglistitemCtrl.Create))
-		r.HandleFunc("PATCH /api/v1/packing-lists/{id}/items/{item-id}", adapter.Adapt(packinglistitemCtrl.Update))
-		r.HandleFunc("DELETE /api/v1/packing-lists/{id}/items/{item-id}", adapter.Adapt(packinglistitemCtrl.Delete))
 
 		// $scaffold_inject_routes
 	})

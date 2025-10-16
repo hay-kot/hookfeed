@@ -3,12 +3,16 @@ package main
 import (
 	"context"
 	"fmt"
-	"time"
 
+	"github.com/hay-kot/hookfeed/backend/internal/data/db"
+	"github.com/hay-kot/hookfeed/backend/internal/data/db/migrations"
+	"github.com/hay-kot/hookfeed/backend/internal/services"
+	"github.com/hay-kot/hookfeed/backend/internal/xapps/intervalbot"
+	"github.com/hay-kot/hookfeed/backend/internal/xapps/tasker"
+	"github.com/hay-kot/hookfeed/backend/internal/xapps/webapi"
+	"github.com/hay-kot/plugs/plugs"
 	"github.com/rs/zerolog/log"
 	"github.com/urfave/cli/v3"
-
-	"github.com/hay-kot/plugs/plugs"
 )
 
 type ServeCmd struct {
@@ -26,20 +30,18 @@ func (s *ServeCmd) Register(app *cli.Command) *cli.Command {
 	cmd := &cli.Command{
 		Name:      "serve",
 		Usage:     "Start the HookFeed server",
-		UsageText: "hookfeed serve --config <config.yml> --middleware-dir <dir>",
+		UsageText: "hookfeed serve [options]",
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:        "config",
 				Aliases:     []string{"c"},
 				Usage:       "Path to configuration file",
-				Required:    true,
 				Destination: &s.flags.config,
 			},
 			&cli.StringFlag{
 				Name:        "middleware-dir",
 				Aliases:     []string{"m"},
 				Usage:       "Path to directory containing middleware Lua scripts",
-				Required:    true,
 				Destination: &s.flags.middlewareDir,
 			},
 		},
@@ -51,20 +53,53 @@ func (s *ServeCmd) Register(app *cli.Command) *cli.Command {
 }
 
 func (s *ServeCmd) serve(ctx context.Context, cmd *cli.Command) error {
+	log.Info().Msg("starting HookFeed server")
+
+	// Set migration logger
+	migrations.SetLogger(log.Logger)
+
+	// Load configuration from environment
+	cfg := LoadConfig()
+
 	log.Info().
-		Str("config", s.flags.config).
-		Str("middlewareDir", s.flags.middlewareDir).
-		Msg("starting HookFeed server")
+		Str("host", cfg.Web.Host).
+		Str("port", cfg.Web.Port).
+		Str("database", cfg.Postgres.Host).
+		Msg("configuration loaded")
 
-	// TODO: Implement server startup
-	fmt.Println("Server command not yet implemented")
+	// Initialize database connection with migrations
+	queries, err := db.NewExt(ctx, log.Logger, cfg.Postgres, true)
+	if err != nil {
+		return fmt.Errorf("failed to create database connection: %w", err)
+	}
 
-	runner := plugs.New(
-		plugs.WithTimeout(10*time.Second),
-		plugs.WithPrintln(func(a ...any) {
-			log.Info().Msg(fmt.Sprint(a...))
-		}),
+	// Initialize task runner
+	taskRunner := tasker.New()
+
+	// Initialize services
+	svcs, err := services.NewService(cfg.ServiceCfg, log.Logger, queries, taskRunner)
+	if err != nil {
+		return fmt.Errorf("failed to initialize services: %w", err)
+	}
+
+	// Initialize web API
+	webAPI := webapi.New(log.Logger, build(), cfg.Web, svcs)
+
+	// Initialize interval bot for scheduled tasks
+	intervalBot := intervalbot.New(log.Logger)
+
+	// Create plugs manager to orchestrate all services
+	mgr := plugs.New(
+		plugs.WithPrintln(log.Logger.Print),
 	)
 
-	return runner.Start(ctx)
+	// Register all services
+	mgr.AddFunc("interval_bot", intervalBot.Start)
+	mgr.AddFunc("task_runner", taskRunner.Start)
+	mgr.AddFunc("web_api", webAPI.Start)
+
+	log.Info().Msg("starting all services")
+
+	// Start all services and block until context is cancelled
+	return mgr.Start(ctx)
 }

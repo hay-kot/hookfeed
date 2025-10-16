@@ -11,31 +11,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-type PackingList struct {
-	ID          uuid.UUID
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
-	UserID      uuid.UUID
-	Name        string
-	Description string
-	Status      string
-	DueDate     pgtype.Date
-	Tags        []string
-	Days        int32
-}
-
-type PackingListItem struct {
-	ID            uuid.UUID
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
-	PackingListID uuid.UUID
-	Name          string
-	Category      string
-	Quantity      int32
-	IsPacked      bool
-	Notes         string
-}
-
 type User struct {
 	ID                    uuid.UUID
 	CreatedAt             time.Time

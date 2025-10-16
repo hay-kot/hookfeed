@@ -81,7 +81,7 @@ tasks:
     deps:
       - gen
     cmds:
-      - go run ./cmd/api/
+      - go run ./cmd/hookfeed/ serve
 
   seed:
     dir: backend

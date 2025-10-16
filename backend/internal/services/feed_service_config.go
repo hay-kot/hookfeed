@@ -1,19 +1,16 @@
-package main
+package services
 
 import (
 	"fmt"
-	"os"
+	"io"
 
 	"github.com/goccy/go-yaml"
 )
 
 // Config represents the complete HookFeed configuration
-type Config struct {
-	Version    int      `yaml:"version"`
+type FeedFile struct {
 	Middleware []string `yaml:"middleware"` // Filenames in execution order
 	Feeds      []Feed   `yaml:"feeds"`
-	Database   Database `yaml:"database"`
-	Server     Server   `yaml:"server"`
 }
 
 // Feed represents a webhook feed configuration
@@ -53,30 +50,14 @@ type Retention struct {
 	MaxAgeDays int `yaml:"max_age_days"`
 }
 
-// Database configuration
-type Database struct {
-	Host     string `yaml:"host"`
-	Port     int    `yaml:"port"`
-	User     string `yaml:"user"`
-	Password string `yaml:"password"`
-	Database string `yaml:"database"`
-	SSLMode  string `yaml:"sslMode"`
-}
-
-// Server configuration
-type Server struct {
-	Host string `yaml:"host"`
-	Port int    `yaml:"port"`
-}
-
-// Load reads and parses a YAML configuration file
-func Load(path string) (*Config, error) {
-	data, err := os.ReadFile(path)
+// FeedFileLoad reads and parses a YAML configuration file
+func FeedFileLoad(reader io.Reader) (*FeedFile, error) {
+	data, err := io.ReadAll(reader)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read config file: %w", err)
+		return nil, fmt.Errorf("failed to read config: %w", err)
 	}
 
-	var cfg Config
+	var cfg FeedFile
 	if err := yaml.Unmarshal(data, &cfg); err != nil {
 		return nil, fmt.Errorf("failed to parse config: %w", err)
 	}
@@ -89,11 +70,7 @@ func Load(path string) (*Config, error) {
 }
 
 // Validate checks if the configuration is valid
-func (c *Config) Validate() error {
-	if c.Version != 1 {
-		return fmt.Errorf("unsupported config version: %d (expected 1)", c.Version)
-	}
-
+func (c *FeedFile) Validate() error {
 	if len(c.Feeds) == 0 {
 		return fmt.Errorf("at least one feed must be defined")
 	}
@@ -114,12 +91,4 @@ func (c *Config) Validate() error {
 	}
 
 	return nil
-}
-
-// ConnectionString returns a PostgreSQL connection string
-func (d *Database) ConnectionString() string {
-	return fmt.Sprintf(
-		"host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
-		d.Host, d.Port, d.User, d.Password, d.Database, d.SSLMode,
-	)
 }

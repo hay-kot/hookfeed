@@ -1,0 +1,241 @@
+basePath: /api
+definitions:
+  dtos.PasswordReset:
+    properties:
+      password:
+        minLength: 8
+        type: string
+      token:
+        type: string
+    required:
+    - password
+    - token
+    type: object
+  dtos.PasswordResetRequest:
+    properties:
+      email:
+        type: string
+    required:
+    - email
+    type: object
+  dtos.StatusResponse:
+    properties:
+      build:
+        type: string
+    type: object
+  dtos.User:
+    properties:
+      createdAt:
+        type: string
+      email:
+        type: string
+      id:
+        type: string
+      subscriptionEndedDate:
+        type: string
+      subscriptionStartDate:
+        type: string
+      updatedAt:
+        type: string
+      username:
+        type: string
+    type: object
+  dtos.UserAuthenticate:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  dtos.UserRegister:
+    properties:
+      email:
+        type: string
+      password:
+        maxLength: 256
+        minLength: 6
+        type: string
+      username:
+        maxLength: 128
+        minLength: 6
+        type: string
+    required:
+    - email
+    - password
+    - username
+    type: object
+  dtos.UserSession:
+    properties:
+      expiresAt:
+        type: string
+      token:
+        type: string
+    type: object
+  dtos.UserUpdate:
+    properties:
+      email:
+        type: string
+      password:
+        maxLength: 256
+        minLength: 6
+        type: string
+      username:
+        maxLength: 128
+        minLength: 6
+        type: string
+    type: object
+info:
+  contact: {}
+  description: This is a standard Rest API template
+  title: hookfeed
+  version: "0.1"
+paths:
+  /v1/info:
+    get:
+      consumes:
+      - application/json
+      description: Get the status of the service
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dtos.StatusResponse'
+      summary: Get the status of the service
+      tags:
+      - status
+  /v1/users/login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticate a user
+      parameters:
+      - description: User credentials
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/dtos.UserAuthenticate'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dtos.UserSession'
+      summary: Authenticate a user
+      tags:
+      - Auth
+  /v1/users/register:
+    post:
+      consumes:
+      - application/json
+      description: Register a new user
+      parameters:
+      - description: User details
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/dtos.UserRegister'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/dtos.User'
+      summary: Register a new user
+      tags:
+      - User
+  /v1/users/request-password-reset:
+    post:
+      consumes:
+      - application/json
+      description: Request a password reset
+      parameters:
+      - description: User details
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/dtos.PasswordResetRequest'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+      summary: Request a password reset
+      tags:
+      - User
+  /v1/users/reset-password:
+    post:
+      consumes:
+      - application/json
+      description: Reset a user's password
+      parameters:
+      - description: User details
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/dtos.PasswordReset'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+      summary: Reset a user's password
+      tags:
+      - User
+  /v1/users/self:
+    get:
+      consumes:
+      - application/json
+      description: Get the current user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dtos.User'
+      security:
+      - Bearer: []
+      summary: Get the current user
+      tags:
+      - User
+    patch:
+      consumes:
+      - application/json
+      description: Update the current user's details
+      parameters:
+      - description: User details
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/dtos.UserUpdate'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dtos.User'
+      security:
+      - Bearer: []
+      summary: Update the current user's details
+      tags:
+      - User
+securityDefinitions:
+  Bearer:
+    description: '"Type ''Bearer TOKEN'' to correctly set the API Key"'
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"
