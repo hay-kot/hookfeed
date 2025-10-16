@@ -20,6 +20,21 @@ export interface DtosFeed {
   retention?: DtosRetention;
 }
 
+export interface DtosFeedMessage {
+  createdAt?: string;
+  id?: string;
+  updatedAt?: string;
+}
+
+export type DtosFeedMessageCreate = object;
+
+export type DtosFeedMessageUpdate = object;
+
+export interface DtosPaginationResponseDtosFeedMessage {
+  items?: DtosFeedMessage[];
+  total?: number;
+}
+
 export interface DtosPasswordReset {
   /** @minLength 8 */
   password: string;

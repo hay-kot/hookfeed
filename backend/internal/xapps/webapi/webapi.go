@@ -129,6 +129,12 @@ func (ib *WebAPI) routes() chi.Router {
 
 		r.Get("/api/v1/feeds", adapter.Adapt(feedctrl.GetAll))
 
+		feedmessageCtrl := handlers.NewFeedMessageController(ib.services.FeedMessages)
+		r.HandleFunc("GET /api/v1/feed-messages", adapter.Adapt(feedmessageCtrl.GetAll))
+		r.HandleFunc("POST /api/v1/feed-messages", adapter.Adapt(feedmessageCtrl.Create))
+		r.HandleFunc("GET /api/v1/feed-messages/{id}", adapter.Adapt(feedmessageCtrl.Get))
+		r.HandleFunc("PUT /api/v1/feed-messages/{id}", adapter.Adapt(feedmessageCtrl.Update))
+		r.HandleFunc("DELETE /api/v1/feed-messages/{id}", adapter.Adapt(feedmessageCtrl.Delete))
 		// $scaffold_inject_routes
 	})
 

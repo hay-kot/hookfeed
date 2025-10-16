@@ -5,8 +5,8 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/hay-kot/packcraft/backend/internal/data/db"
-	"github.com/hay-kot/packcraft/backend/internal/data/dtos"
+	"github.com/hay-kot/hookfeed/backend/internal/data/db"
+	"github.com/hay-kot/hookfeed/backend/internal/data/dtos"
 	"github.com/rs/zerolog"
 )
 

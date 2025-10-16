@@ -4,9 +4,9 @@ import (
   "net/http"
 
 	"github.com/hay-kot/httpkit/server"
-	"github.com/hay-kot/packcraft/backend/internal/data/dtos"
-	"github.com/hay-kot/packcraft/backend/internal/services"
-	"github.com/hay-kot/packcraft/backend/internal/web/extractors"
+	"github.com/hay-kot/hookfeed/backend/internal/data/dtos"
+	"github.com/hay-kot/hookfeed/backend/internal/services"
+	"github.com/hay-kot/hookfeed/backend/internal/web/extractors"
 )
 
 type {{ .Computed.domain_var }}Controller struct {

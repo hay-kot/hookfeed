@@ -19,11 +19,12 @@ type Config struct {
 
 // Service is a collection of all services in the application
 type Service struct {
-	Admin     *AdminService
-	Users     *UserService
-	Passwords *PasswordService
-	Feeds     *FeedService
-	Webhooks  *WebhookService
+	Admin        *AdminService
+	Users        *UserService
+	Passwords    *PasswordService
+	Feeds        *FeedService
+	Webhooks     *WebhookService
+	FeedMessages *FeedMessageService
 	// $scaffold_inject_service
 }
 
@@ -60,11 +61,12 @@ func NewService(
 	webhookService := NewWebhookService(l, feedService)
 
 	return &Service{
-		Admin:     NewAdminService(l, db),
-		Users:     NewUserService(l, db),
-		Passwords: NewPasswordService(cfg, l, db, queue),
-		Feeds:     feedService,
-		Webhooks:  webhookService,
+		Admin:        NewAdminService(l, db),
+		Users:        NewUserService(l, db),
+		Passwords:    NewPasswordService(cfg, l, db, queue),
+		Feeds:        feedService,
+		Webhooks:     webhookService,
+		FeedMessages: NewFeedMessageService(l, db),
 		// $scaffold_inject_constructor
 	}, nil
 }

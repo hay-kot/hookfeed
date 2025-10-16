@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/hay-kot/packcraft/backend/internal/data/db"
+	"github.com/hay-kot/hookfeed/backend/internal/data/db"
 )
 
 type {{ .Computed.domain_var }} struct {
