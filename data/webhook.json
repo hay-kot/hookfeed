@@ -1,0 +1,11 @@
+{
+  "body": {
+    "event": "user.created",
+    "timestamp": "2025-10-16T10:30:00Z",
+    "data": {
+      "id": "user-999",
+      "status": "pending_verification",
+      "email": "test@example.com"
+    }
+  }
+}
