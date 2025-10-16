@@ -1,0 +1,16 @@
+{
+  $schema: "https://docs.renovatebot.com/renovate-schema.json",
+  extends: ["config:recommended"],
+  postUpdateOptions: [
+    // Required options for properly updating dependencies
+    "gomodTidy",
+    "gomodUpdateImportPaths",
+  ],
+  packageRules: [
+    // Ignore .dagger since it's dependencies are managed via the dagger cli
+    {
+      matchFileNames: [".dagger/**"],
+      enabled: false,
+    },
+  ],
+}

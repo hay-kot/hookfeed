@@ -1,0 +1,9 @@
+{
+  "typescript": {
+    "data-contracts": [
+      "./frontend/lib/api/types/data-contracts.ts"
+    ],
+    "swaggerfile": "./backend/internal/web/docs/swagger.json",
+    "output-routes": "./frontend/lib/api/types/routes.ts"
+  }
+}

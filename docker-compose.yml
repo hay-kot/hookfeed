@@ -1,0 +1,26 @@
+---
+name: hookfeed-dev
+services:
+  postgres-dev:
+    image: postgres:18-alpine
+    restart: no
+    environment:
+      - "POSTGRES_USER=postgres"
+      - "POSTGRES_PASSWORD=postgres"
+      - "POSTGRES_DB=hookfeed"
+    ports:
+      - "8861:5432"
+    volumes:
+      - "hf.dev.pg:/var/lib/postgresql/data"
+  mailpit:
+    image: axllent/mailpit
+    restart: no
+    environment:
+      - "MP_SMTP_AUTH_ACCEPT_ANY=true"
+      - "MP_SMTP_AUTH_ALLOW_INSECURE=true"
+    ports:
+      - "8025:8025"
+      - "1025:1025"
+
+volumes:
+  hf.dev.pg: {}

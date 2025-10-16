@@ -1,44 +1,122 @@
+# https://taskfile.dev
+
 version: "3"
 
-env:
-  LOG_LEVEL: "debug"
+vars:
+  GREETING: Hello, World!
 
 tasks:
-  test:
-    desc: Runs all go tests using gotestsum - supports passing gotestsum args
+  swag:
+    dir: backend/internal/web/docs/
+    desc: Generate swagger docs
+    sources:
+      - ./backend/cmd/api/main.go
+      - ./backend/internal/data/dtos/*.go
+      - ./backend/internal/web/handlers/*.go
+    generates:
+      - ./backend/internal/web/docs/swagger.json
+    vars:
+      BACKEND: ./../../..
     cmds:
-      - gotestsum <no value> ./...
+      - echo {{ .BACKEND }}
+      - swag fmt --dir={{ .BACKEND }}/internal
+      - |
+        swag init --outputTypes=json \
+          --generalInfo {{ .BACKEND }}/cmd/api/main.go \
+          --dir={{ .BACKEND }}/internal/xapps/webapi/ \
+          --output={{ .BACKEND }}/internal/web/docs/ \
+          --parseDependency
 
-  watch:
-    desc: Runs all go tests using gotestsum in watch mode
+  gen:ts:
+    desc: Generate typescript types
     cmds:
-      - gotestsum --watch -- -v ./...
+      - |
+        swagger-typescript-api generate \
+         --no-client \
+         --modular \
+         --path ./backend/internal/web/docs/swagger.json \
+         --output ./frontend/lib/api/types \
+    sources:
+      - "./backend/internal/web/docs/swagger.json"
 
-  coverage:
-    desc: Runs all go tests with -race flag and generates a coverage report
+  gen:code:
+    desc: run new code generators
+    dir: backend
+    sources:
+      - "./frontend/lib/api/types/data-contracts.ts"
+      - "./backend/internal/web/docs/swagger.json"
     cmds:
-      - go test -race -coverprofile=coverage.out -covermode=atomic ./... -v -cover
-    silent: true
+      - go run ./cmd/tools/codegen/ generate --config=../codegen.json
 
-  fmt:
-    desc: Runs go fmt on the backend
+  gen:
+    deps:
+      - swag
     cmds:
-      - gofumpt -w .
+      - task: gen:ts
+      - task: gen:code
+
+  svc:
+    cmds:
+      - docker compose up
 
   tidy:
-    desc: Runs go mod tidy on the backend
+    dir: backend
     cmds:
       - go mod tidy
 
   lint:
+    dir: backend
     desc: Runs golangci-lint
     cmds:
       - golangci-lint run ./...
 
-  pr:
-    desc: Runs all go test and lint related tasks for PRs
+  fmt:
+    dir: backend
+    desc: Runs go fmt on the backend
     cmds:
-      - task: fmt
-      - task: tidy
-      - task: lint
-      - task: test
+      - go fmt ./...
+
+  run:
+    dir: backend
+    deps:
+      - gen
+    cmds:
+      - go run ./cmd/api/
+
+  seed:
+    dir: backend
+    deps:
+      - gen
+    cmds:
+      - go run ./cmd/tools/seed/ seed --config=../seedfile.json
+
+  test:
+    dir: backend
+    desc: Runs all go tests
+    cmds:
+      - go test {{ .CLI_ARGS }} ./...
+
+  db:sqlc:
+    aliases: ["sqlc"]
+    dir: backend
+    desc: "Generate the sqlc code"
+    sources:
+      - ./internal/data/db/migrations/sql/*.sql
+      - ./internal/data/db/*.sql
+      - ./sqlc.yml
+    generates:
+      - ./internal/data/db/*.go
+    cmds:
+      - sqlc generate
+
+  db:migrate:
+    desc: "Creates a new up/down migration ex: `task db:migrate:empty -- create_user_table`"
+    dir: ./backend/internal/data/db/migrations/sql
+    cmds:
+      - goose create {{ .CLI_ARGS }} sql
+
+  ui:*:
+    desc: Forwards commands to the bun/package.json file
+    dir: frontend
+    cmds:
+      - bun run {{ index .MATCH 0 }}
