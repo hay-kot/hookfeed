@@ -1,0 +1,80 @@
+# yaml-language-server: $schema=https://hay-kot.github.io/scaffold/schema.json
+messages:
+  pre: |
+    # Domain Scaffold
+
+    This scaffold will generate the following files:
+      - Dtos in ./backend/internal/data/dtos
+      - Service in ./backend/internal/services
+      - Controller in ./backend/internal/web/handlers
+
+  post: |
+    # Next Steps
+
+    You've done it! Next steps are to.
+
+    1. Generate your database migration with `task db:migrate -- <migration-name>`
+    2. Implement the Sql Queries and run sqlc
+    3. Implement the service
+
+questions:
+  - name: domain_name
+    group: main
+    prompt:
+      message: Domain Name
+      description: The name of the domain entity in singular form (e.g. Post)
+  - name: sql_table
+    group: main
+    prompt:
+      message: SQL Table Name
+      description: The name of the SQL table for the domain entity (e.g. user_posts)
+  - name: user_relation
+    group: main
+    prompt:
+      confirm: User Relation
+      description: Does this domain entity have a user relation? (e.g. user_id)
+
+computed:
+  domain_var: "{{ .Scaffold.domain_name | toPascalCase }}"
+  domain_kebab: "{{ .Scaffold.domain_name | toKebabCase }}"
+  sql_table: "{{ .Scaffold.sql_table }}"
+  sql_var: "{{ .Scaffold.sql_table | toSingular | toPascalCase }}"
+
+rewrites:
+  - from: "templates/dtos.go"
+    to: "backend/internal/data/dtos/{{ .Scaffold.domain_name | toSnakeCase }}.go"
+  - from: "templates/service.go"
+    to: "backend/internal/services/{{ .Scaffold.domain_name | toSnakeCase }}_service.go"
+  - from: "templates/handlers.go"
+    to: "backend/internal/xapps/webapi/handlers/{{ .Scaffold.domain_name | toSnakeCase }}_handler.go"
+  - from: "templates/queries.sql"
+    to: "backend/internal/data/db/{{ .Scaffold.domain_name | toSnakeCase }}.sql"
+  - from: "templates/migrations.sql"
+    to: 'backend/internal/data/db/migrations/sql/{{ now | date "20060102150405" }}_{{ .Scaffold.domain_name | toSnakeCase }}.sql'
+
+inject:
+  - at: "// $scaffold_inject_service"
+    name: Scaffold Inject Services
+    path: "backend/internal/services/services.go"
+    template: |
+      {{ .Computed.domain_var }}s *{{ .Computed.domain_var }}Service
+
+  - at: "// $scaffold_inject_constructor"
+    name: Scaffold Inject Services Constructor
+    path: "backend/internal/services/services.go"
+    template: |
+      {{ .Computed.domain_var }}s: New{{ .Computed.domain_var }}Service(l, db),
+
+  - at: "// $scaffold_inject_routes"
+    name: Scaffold Inject Routes
+    path: "backend/internal/xapps/webapi/webapi.go"
+    template: |+
+      {{ $ctrl := .Scaffold.domain_name | toCamelCase  }}
+
+      {{ $ctrl }}Ctrl := handlers.New{{ .Scaffold.domain_name | toPascalCase }}Controller(ib.services.{{ .Scaffold.domain_name | toPascalCase }}s)
+
+      r.HandleFunc("GET /api/v1/{{ .Computed.domain_kebab }}s" , adapter.Adapt({{ $ctrl }}Ctrl.GetAll))
+      r.HandleFunc("POST /api/v1/{{ .Computed.domain_kebab }}s" , adapter.Adapt({{ $ctrl }}Ctrl.Create))
+      r.HandleFunc("GET /api/v1/{{ .Computed.domain_kebab }}s/{id}" , adapter.Adapt({{ $ctrl }}Ctrl.Get))
+      r.HandleFunc("PUT /api/v1/{{ .Computed.domain_kebab }}s/{id}" , adapter.Adapt({{ $ctrl }}Ctrl.Update))
+      r.HandleFunc("DELETE /api/v1/{{ .Computed.domain_kebab }}s/{id}" , adapter.Adapt({{ $ctrl }}Ctrl.Delete))
