@@ -58,7 +58,8 @@ func NewService(
 		feedService = NewFeedService(cache)
 	}
 
-	webhookService := NewWebhookService(l, feedService)
+	feedMessageService := NewFeedMessageService(l, db)
+	webhookService := NewWebhookService(l, feedService, feedMessageService)
 
 	return &Service{
 		Admin:        NewAdminService(l, db),
@@ -66,7 +67,7 @@ func NewService(
 		Passwords:    NewPasswordService(cfg, l, db, queue),
 		Feeds:        feedService,
 		Webhooks:     webhookService,
-		FeedMessages: NewFeedMessageService(l, db),
+		FeedMessages: feedMessageService,
 		// $scaffold_inject_constructor
 	}, nil
 }

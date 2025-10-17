@@ -59,6 +59,10 @@ tasks:
     cmds:
       - docker compose up
 
+  svc:clean:
+    cmds:
+      - docker compose down -v
+
   tidy:
     dir: backend
     cmds:
@@ -120,3 +124,13 @@ tasks:
     dir: frontend
     cmds:
       - bun run {{ index .MATCH 0 }}
+
+  webhook:test:
+    desc: Send a test webhook to the dev-test feed
+    cmds:
+      - ./dev/send-webhook.sh {{ .CLI_ARGS }}
+
+  webhook:bulk:
+    desc: Send multiple test webhooks (default 5)
+    cmds:
+      - ./dev/send-webhooks-bulk.sh {{ .CLI_ARGS }}

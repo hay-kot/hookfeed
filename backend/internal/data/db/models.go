@@ -12,9 +12,40 @@ import (
 )
 
 type FeedMessage struct {
-	ID        uuid.UUID
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	ID             uuid.UUID
+	FeedSlug       string
+	RawRequest     []byte
+	RawHeaders     []byte
+	Title          *string
+	Message        *string
+	Level          *string
+	Logs           []string
+	Metadata       []byte
+	State          *string
+	StateChangedAt pgtype.Timestamp
+	ReceivedAt     time.Time
+	ProcessedAt    pgtype.Timestamp
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+	SearchVector   interface{}
+}
+
+type FeedMessagesView struct {
+	ID             uuid.UUID
+	FeedSlug       string
+	RawRequest     []byte
+	RawHeaders     []byte
+	Title          *string
+	Message        *string
+	Level          *string
+	Logs           []string
+	Metadata       []byte
+	State          *string
+	StateChangedAt pgtype.Timestamp
+	ReceivedAt     time.Time
+	ProcessedAt    pgtype.Timestamp
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
 }
 
 type User struct {

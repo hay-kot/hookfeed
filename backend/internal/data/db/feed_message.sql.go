@@ -7,23 +7,187 @@ package db
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
+
+const feedMessageBulkDelete = `-- name: FeedMessageBulkDelete :one
+DELETE FROM
+    feed_messages
+WHERE
+    id = ANY($1::uuid[])
+RETURNING COUNT(*)
+`
+
+func (q *Queries) FeedMessageBulkDelete(ctx context.Context, messageIds []uuid.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, feedMessageBulkDelete, messageIds)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const feedMessageBulkDeleteByFilter = `-- name: FeedMessageBulkDeleteByFilter :one
+DELETE FROM
+    feed_messages
+WHERE
+    feed_slug = $1
+    AND ($2::text IS NULL OR level = $2)
+    AND ($3::timestamp IS NULL OR received_at < $3)
+RETURNING COUNT(*)
+`
+
+type FeedMessageBulkDeleteByFilterParams struct {
+	FeedSlug  string
+	Level     *string
+	OlderThan pgtype.Timestamp
+}
+
+func (q *Queries) FeedMessageBulkDeleteByFilter(ctx context.Context, arg FeedMessageBulkDeleteByFilterParams) (int64, error) {
+	row := q.db.QueryRow(ctx, feedMessageBulkDeleteByFilter, arg.FeedSlug, arg.Level, arg.OlderThan)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const feedMessageBulkUpdateState = `-- name: FeedMessageBulkUpdateState :exec
+UPDATE feed_messages
+SET
+    state = $2,
+    state_changed_at = CURRENT_TIMESTAMP
+WHERE
+    id = ANY($1::uuid[])
+`
+
+type FeedMessageBulkUpdateStateParams struct {
+	Column1 []uuid.UUID
+	State   *string
+}
+
+func (q *Queries) FeedMessageBulkUpdateState(ctx context.Context, arg FeedMessageBulkUpdateStateParams) error {
+	_, err := q.db.Exec(ctx, feedMessageBulkUpdateState, arg.Column1, arg.State)
+	return err
+}
 
 const feedMessageByID = `-- name: FeedMessageByID :one
 SELECT
-    id, created_at, updated_at
+    feed_messages_view.id, feed_messages_view.feed_slug, feed_messages_view.raw_request, feed_messages_view.raw_headers, feed_messages_view.title, feed_messages_view.message, feed_messages_view.level, feed_messages_view.logs, feed_messages_view.metadata, feed_messages_view.state, feed_messages_view.state_changed_at, feed_messages_view.received_at, feed_messages_view.processed_at, feed_messages_view.created_at, feed_messages_view.updated_at
 FROM
-    feed_messages
+    feed_messages_view
 WHERE
     id = $1
 `
 
-func (q *Queries) FeedMessageByID(ctx context.Context, id uuid.UUID) (FeedMessage, error) {
+type FeedMessageByIDRow struct {
+	FeedMessagesView FeedMessagesView
+}
+
+func (q *Queries) FeedMessageByID(ctx context.Context, id uuid.UUID) (FeedMessageByIDRow, error) {
 	row := q.db.QueryRow(ctx, feedMessageByID, id)
-	var i FeedMessage
-	err := row.Scan(&i.ID, &i.CreatedAt, &i.UpdatedAt)
+	var i FeedMessageByIDRow
+	err := row.Scan(
+		&i.FeedMessagesView.ID,
+		&i.FeedMessagesView.FeedSlug,
+		&i.FeedMessagesView.RawRequest,
+		&i.FeedMessagesView.RawHeaders,
+		&i.FeedMessagesView.Title,
+		&i.FeedMessagesView.Message,
+		&i.FeedMessagesView.Level,
+		&i.FeedMessagesView.Logs,
+		&i.FeedMessagesView.Metadata,
+		&i.FeedMessagesView.State,
+		&i.FeedMessagesView.StateChangedAt,
+		&i.FeedMessagesView.ReceivedAt,
+		&i.FeedMessagesView.ProcessedAt,
+		&i.FeedMessagesView.CreatedAt,
+		&i.FeedMessagesView.UpdatedAt,
+	)
+	return i, err
+}
+
+const feedMessageCreate = `-- name: FeedMessageCreate :one
+INSERT INTO feed_messages (
+    feed_slug,
+    raw_request,
+    raw_headers,
+    title,
+    message,
+    level,
+    logs,
+    metadata,
+    state,
+    received_at,
+    processed_at
+) VALUES (
+    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
+) RETURNING id, feed_slug, raw_request, raw_headers, title, message, level, logs, metadata, state, state_changed_at, received_at, processed_at, created_at, updated_at
+`
+
+type FeedMessageCreateParams struct {
+	FeedSlug    string
+	RawRequest  []byte
+	RawHeaders  []byte
+	Title       *string
+	Message     *string
+	Level       *string
+	Logs        []string
+	Metadata    []byte
+	State       *string
+	ReceivedAt  time.Time
+	ProcessedAt pgtype.Timestamp
+}
+
+type FeedMessageCreateRow struct {
+	ID             uuid.UUID
+	FeedSlug       string
+	RawRequest     []byte
+	RawHeaders     []byte
+	Title          *string
+	Message        *string
+	Level          *string
+	Logs           []string
+	Metadata       []byte
+	State          *string
+	StateChangedAt pgtype.Timestamp
+	ReceivedAt     time.Time
+	ProcessedAt    pgtype.Timestamp
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+}
+
+func (q *Queries) FeedMessageCreate(ctx context.Context, arg FeedMessageCreateParams) (FeedMessageCreateRow, error) {
+	row := q.db.QueryRow(ctx, feedMessageCreate,
+		arg.FeedSlug,
+		arg.RawRequest,
+		arg.RawHeaders,
+		arg.Title,
+		arg.Message,
+		arg.Level,
+		arg.Logs,
+		arg.Metadata,
+		arg.State,
+		arg.ReceivedAt,
+		arg.ProcessedAt,
+	)
+	var i FeedMessageCreateRow
+	err := row.Scan(
+		&i.ID,
+		&i.FeedSlug,
+		&i.RawRequest,
+		&i.RawHeaders,
+		&i.Title,
+		&i.Message,
+		&i.Level,
+		&i.Logs,
+		&i.Metadata,
+		&i.State,
+		&i.StateChangedAt,
+		&i.ReceivedAt,
+		&i.ProcessedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
 	return i, err
 }
 
@@ -39,12 +203,58 @@ func (q *Queries) FeedMessageDeleteByID(ctx context.Context, id uuid.UUID) error
 	return err
 }
 
+const feedMessageDeleteOldByAge = `-- name: FeedMessageDeleteOldByAge :exec
+DELETE FROM feed_messages
+WHERE
+    feed_slug = $1
+    AND received_at < NOW() - INTERVAL '1 day' * $2
+`
+
+type FeedMessageDeleteOldByAgeParams struct {
+	FeedSlug string
+	Column2  interface{}
+}
+
+func (q *Queries) FeedMessageDeleteOldByAge(ctx context.Context, arg FeedMessageDeleteOldByAgeParams) error {
+	_, err := q.db.Exec(ctx, feedMessageDeleteOldByAge, arg.FeedSlug, arg.Column2)
+	return err
+}
+
+const feedMessageDeleteOldByCount = `-- name: FeedMessageDeleteOldByCount :exec
+DELETE FROM feed_messages fm
+WHERE fm.feed_slug = $1
+AND fm.id IN (
+    SELECT id
+    FROM feed_messages
+    WHERE feed_slug = $1
+    ORDER BY received_at DESC
+    OFFSET $2
+)
+`
+
+type FeedMessageDeleteOldByCountParams struct {
+	FeedSlug string
+	Offset   int32
+}
+
+func (q *Queries) FeedMessageDeleteOldByCount(ctx context.Context, arg FeedMessageDeleteOldByCountParams) error {
+	_, err := q.db.Exec(ctx, feedMessageDeleteOldByCount, arg.FeedSlug, arg.Offset)
+	return err
+}
+
 const feedMessageGetAll = `-- name: FeedMessageGetAll :many
 SELECT
-    id, created_at, updated_at
+    feed_messages_view.id, feed_messages_view.feed_slug, feed_messages_view.raw_request, feed_messages_view.raw_headers, feed_messages_view.title, feed_messages_view.message, feed_messages_view.level, feed_messages_view.logs, feed_messages_view.metadata, feed_messages_view.state, feed_messages_view.state_changed_at, feed_messages_view.received_at, feed_messages_view.processed_at, feed_messages_view.created_at, feed_messages_view.updated_at
 FROM
-    feed_messages
+    feed_messages_view
 ORDER BY
+    -- For received_at
+    CASE
+        WHEN $1 :: text = 'received_at:asc' THEN received_at
+    END ASC NULLS LAST,
+    CASE
+        WHEN $1 = 'received_at:desc' THEN received_at
+    END DESC NULLS LAST,
     -- For created_at
     CASE
         WHEN $1 :: text = 'created_at:asc' THEN created_at
@@ -55,7 +265,8 @@ ORDER BY
     -- Add this to the end of the order by clause so that items are ordered
     -- consistently within an ordered set for consistent results between pages
     id DESC
-LIMIT $3 OFFSET $2
+LIMIT
+    $3 OFFSET $2
 `
 
 type FeedMessageGetAllParams struct {
@@ -64,16 +275,36 @@ type FeedMessageGetAllParams struct {
 	Limit   int32
 }
 
-func (q *Queries) FeedMessageGetAll(ctx context.Context, arg FeedMessageGetAllParams) ([]FeedMessage, error) {
+type FeedMessageGetAllRow struct {
+	FeedMessagesView FeedMessagesView
+}
+
+func (q *Queries) FeedMessageGetAll(ctx context.Context, arg FeedMessageGetAllParams) ([]FeedMessageGetAllRow, error) {
 	rows, err := q.db.Query(ctx, feedMessageGetAll, arg.OrderBy, arg.Offset, arg.Limit)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []FeedMessage
+	var items []FeedMessageGetAllRow
 	for rows.Next() {
-		var i FeedMessage
-		if err := rows.Scan(&i.ID, &i.CreatedAt, &i.UpdatedAt); err != nil {
+		var i FeedMessageGetAllRow
+		if err := rows.Scan(
+			&i.FeedMessagesView.ID,
+			&i.FeedMessagesView.FeedSlug,
+			&i.FeedMessagesView.RawRequest,
+			&i.FeedMessagesView.RawHeaders,
+			&i.FeedMessagesView.Title,
+			&i.FeedMessagesView.Message,
+			&i.FeedMessagesView.Level,
+			&i.FeedMessagesView.Logs,
+			&i.FeedMessagesView.Metadata,
+			&i.FeedMessagesView.State,
+			&i.FeedMessagesView.StateChangedAt,
+			&i.FeedMessagesView.ReceivedAt,
+			&i.FeedMessagesView.ProcessedAt,
+			&i.FeedMessagesView.CreatedAt,
+			&i.FeedMessagesView.UpdatedAt,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -88,11 +319,295 @@ const feedMessageGetAllCount = `-- name: FeedMessageGetAllCount :one
 SELECT
     COUNT(*)
 FROM
-    feed_messages
+    feed_messages_view
 `
 
 func (q *Queries) FeedMessageGetAllCount(ctx context.Context) (int64, error) {
 	row := q.db.QueryRow(ctx, feedMessageGetAllCount)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const feedMessageSearch = `-- name: FeedMessageSearch :many
+SELECT
+    v.id, v.feed_slug, v.raw_request, v.raw_headers, v.title, v.message, v.level, v.logs, v.metadata, v.state, v.state_changed_at, v.received_at, v.processed_at, v.created_at, v.updated_at
+FROM
+    feed_messages_view v
+    INNER JOIN feed_messages fm ON v.id = fm.id
+WHERE
+    ($1::text IS NULL OR v.feed_slug = $1)
+    AND ($2::text IS NULL OR v.level = $2)
+    AND ($3::text IS NULL OR v.state = $3)
+    AND ($4::timestamp IS NULL OR v.received_at >= $4)
+    AND ($5::timestamp IS NULL OR v.received_at <= $5)
+    AND ($6::text IS NULL OR fm.search_vector @@ plainto_tsquery('english', $6))
+ORDER BY
+    v.received_at DESC,
+    v.id DESC
+LIMIT
+    $8 OFFSET $7
+`
+
+type FeedMessageSearchParams struct {
+	FeedSlug *string
+	Level    *string
+	State    *string
+	Since    pgtype.Timestamp
+	Until    pgtype.Timestamp
+	Query    *string
+	Offset   int32
+	Limit    int32
+}
+
+type FeedMessageSearchRow struct {
+	FeedMessagesView FeedMessagesView
+}
+
+func (q *Queries) FeedMessageSearch(ctx context.Context, arg FeedMessageSearchParams) ([]FeedMessageSearchRow, error) {
+	rows, err := q.db.Query(ctx, feedMessageSearch,
+		arg.FeedSlug,
+		arg.Level,
+		arg.State,
+		arg.Since,
+		arg.Until,
+		arg.Query,
+		arg.Offset,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []FeedMessageSearchRow
+	for rows.Next() {
+		var i FeedMessageSearchRow
+		if err := rows.Scan(
+			&i.FeedMessagesView.ID,
+			&i.FeedMessagesView.FeedSlug,
+			&i.FeedMessagesView.RawRequest,
+			&i.FeedMessagesView.RawHeaders,
+			&i.FeedMessagesView.Title,
+			&i.FeedMessagesView.Message,
+			&i.FeedMessagesView.Level,
+			&i.FeedMessagesView.Logs,
+			&i.FeedMessagesView.Metadata,
+			&i.FeedMessagesView.State,
+			&i.FeedMessagesView.StateChangedAt,
+			&i.FeedMessagesView.ReceivedAt,
+			&i.FeedMessagesView.ProcessedAt,
+			&i.FeedMessagesView.CreatedAt,
+			&i.FeedMessagesView.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const feedMessageSearchCount = `-- name: FeedMessageSearchCount :one
+SELECT
+    COUNT(*)
+FROM
+    feed_messages_view v
+    INNER JOIN feed_messages fm ON v.id = fm.id
+WHERE
+    ($1::text IS NULL OR v.feed_slug = $1)
+    AND ($2::text IS NULL OR v.level = $2)
+    AND ($3::text IS NULL OR v.state = $3)
+    AND ($4::timestamp IS NULL OR v.received_at >= $4)
+    AND ($5::timestamp IS NULL OR v.received_at <= $5)
+    AND ($6::text IS NULL OR fm.search_vector @@ plainto_tsquery('english', $6))
+`
+
+type FeedMessageSearchCountParams struct {
+	FeedSlug *string
+	Level    *string
+	State    *string
+	Since    pgtype.Timestamp
+	Until    pgtype.Timestamp
+	Query    *string
+}
+
+func (q *Queries) FeedMessageSearchCount(ctx context.Context, arg FeedMessageSearchCountParams) (int64, error) {
+	row := q.db.QueryRow(ctx, feedMessageSearchCount,
+		arg.FeedSlug,
+		arg.Level,
+		arg.State,
+		arg.Since,
+		arg.Until,
+		arg.Query,
+	)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const feedMessageUpdateState = `-- name: FeedMessageUpdateState :one
+UPDATE feed_messages
+SET
+    state = $2,
+    state_changed_at = CURRENT_TIMESTAMP
+WHERE
+    id = $1
+RETURNING id, feed_slug, raw_request, raw_headers, title, message, level, logs, metadata, state, state_changed_at, received_at, processed_at, created_at, updated_at
+`
+
+type FeedMessageUpdateStateParams struct {
+	ID    uuid.UUID
+	State *string
+}
+
+type FeedMessageUpdateStateRow struct {
+	ID             uuid.UUID
+	FeedSlug       string
+	RawRequest     []byte
+	RawHeaders     []byte
+	Title          *string
+	Message        *string
+	Level          *string
+	Logs           []string
+	Metadata       []byte
+	State          *string
+	StateChangedAt pgtype.Timestamp
+	ReceivedAt     time.Time
+	ProcessedAt    pgtype.Timestamp
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+}
+
+func (q *Queries) FeedMessageUpdateState(ctx context.Context, arg FeedMessageUpdateStateParams) (FeedMessageUpdateStateRow, error) {
+	row := q.db.QueryRow(ctx, feedMessageUpdateState, arg.ID, arg.State)
+	var i FeedMessageUpdateStateRow
+	err := row.Scan(
+		&i.ID,
+		&i.FeedSlug,
+		&i.RawRequest,
+		&i.RawHeaders,
+		&i.Title,
+		&i.Message,
+		&i.Level,
+		&i.Logs,
+		&i.Metadata,
+		&i.State,
+		&i.StateChangedAt,
+		&i.ReceivedAt,
+		&i.ProcessedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const feedMessagesByFeedSlug = `-- name: FeedMessagesByFeedSlug :many
+SELECT
+    feed_messages_view.id, feed_messages_view.feed_slug, feed_messages_view.raw_request, feed_messages_view.raw_headers, feed_messages_view.title, feed_messages_view.message, feed_messages_view.level, feed_messages_view.logs, feed_messages_view.metadata, feed_messages_view.state, feed_messages_view.state_changed_at, feed_messages_view.received_at, feed_messages_view.processed_at, feed_messages_view.created_at, feed_messages_view.updated_at
+FROM
+    feed_messages_view
+WHERE
+    feed_slug = $1
+    AND ($2::text IS NULL OR level = $2)
+    AND ($3::text IS NULL OR state = $3)
+    AND ($4::timestamp IS NULL OR received_at >= $4)
+    AND ($5::timestamp IS NULL OR received_at <= $5)
+ORDER BY
+    received_at DESC,
+    id DESC
+LIMIT
+    $7 OFFSET $6
+`
+
+type FeedMessagesByFeedSlugParams struct {
+	FeedSlug string
+	Level    *string
+	State    *string
+	Since    pgtype.Timestamp
+	Until    pgtype.Timestamp
+	Offset   int32
+	Limit    int32
+}
+
+type FeedMessagesByFeedSlugRow struct {
+	FeedMessagesView FeedMessagesView
+}
+
+func (q *Queries) FeedMessagesByFeedSlug(ctx context.Context, arg FeedMessagesByFeedSlugParams) ([]FeedMessagesByFeedSlugRow, error) {
+	rows, err := q.db.Query(ctx, feedMessagesByFeedSlug,
+		arg.FeedSlug,
+		arg.Level,
+		arg.State,
+		arg.Since,
+		arg.Until,
+		arg.Offset,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []FeedMessagesByFeedSlugRow
+	for rows.Next() {
+		var i FeedMessagesByFeedSlugRow
+		if err := rows.Scan(
+			&i.FeedMessagesView.ID,
+			&i.FeedMessagesView.FeedSlug,
+			&i.FeedMessagesView.RawRequest,
+			&i.FeedMessagesView.RawHeaders,
+			&i.FeedMessagesView.Title,
+			&i.FeedMessagesView.Message,
+			&i.FeedMessagesView.Level,
+			&i.FeedMessagesView.Logs,
+			&i.FeedMessagesView.Metadata,
+			&i.FeedMessagesView.State,
+			&i.FeedMessagesView.StateChangedAt,
+			&i.FeedMessagesView.ReceivedAt,
+			&i.FeedMessagesView.ProcessedAt,
+			&i.FeedMessagesView.CreatedAt,
+			&i.FeedMessagesView.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const feedMessagesByFeedSlugCount = `-- name: FeedMessagesByFeedSlugCount :one
+SELECT
+    COUNT(*)
+FROM
+    feed_messages_view
+WHERE
+    feed_slug = $1
+    AND ($2::text IS NULL OR level = $2)
+    AND ($3::text IS NULL OR state = $3)
+    AND ($4::timestamp IS NULL OR received_at >= $4)
+    AND ($5::timestamp IS NULL OR received_at <= $5)
+`
+
+type FeedMessagesByFeedSlugCountParams struct {
+	FeedSlug string
+	Level    *string
+	State    *string
+	Since    pgtype.Timestamp
+	Until    pgtype.Timestamp
+}
+
+func (q *Queries) FeedMessagesByFeedSlugCount(ctx context.Context, arg FeedMessagesByFeedSlugCountParams) (int64, error) {
+	row := q.db.QueryRow(ctx, feedMessagesByFeedSlugCount,
+		arg.FeedSlug,
+		arg.Level,
+		arg.State,
+		arg.Since,
+		arg.Until,
+	)
 	var count int64
 	err := row.Scan(&count)
 	return count, err

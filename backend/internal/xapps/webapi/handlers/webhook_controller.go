@@ -55,7 +55,7 @@ func (wc *WebhookController) HandleWebhook(w http.ResponseWriter, r *http.Reques
 	}
 
 	// Process the webhook
-	response, err := wc.webhookService.ProcessWebhook(webhookReq)
+	response, err := wc.webhookService.ProcessWebhook(r.Context(), webhookReq)
 	if err != nil {
 		return err
 	}

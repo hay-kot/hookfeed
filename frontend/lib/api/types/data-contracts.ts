@@ -22,13 +22,55 @@ export interface DtosFeed {
 
 export interface DtosFeedMessage {
   createdAt?: string;
+  feedSlug?: string;
   id?: string;
+  level?: string;
+  logs?: string[];
+  message?: string;
+  metadata?: number[];
+  processedAt?: string;
+  rawHeaders?: number[];
+  rawRequest?: number[];
+  receivedAt?: string;
+  state?: string;
+  stateChangedAt?: string;
+  title?: string;
   updatedAt?: string;
 }
 
-export type DtosFeedMessageCreate = object;
+export interface DtosFeedMessageBulkDelete {
+  filter?: DtosFeedMessageDeleteFilter;
+  messageIds?: string[];
+}
 
-export type DtosFeedMessageUpdate = object;
+export interface DtosFeedMessageBulkUpdateState {
+  /** @minItems 1 */
+  messageIds: string[];
+  state: "new" | "acknowledged" | "resolved" | "archived";
+}
+
+export interface DtosFeedMessageCreate {
+  feedSlug: string;
+  level?: "info" | "warning" | "error" | "success" | "debug";
+  logs?: string[];
+  message?: string;
+  metadata?: number[];
+  processedAt?: string;
+  rawHeaders: number[];
+  rawRequest: number[];
+  receivedAt?: string;
+  state?: "new" | "acknowledged" | "resolved" | "archived";
+  title?: string;
+}
+
+export interface DtosFeedMessageDeleteFilter {
+  level?: "info" | "warning" | "error" | "success" | "debug";
+  olderThan?: string;
+}
+
+export interface DtosFeedMessageUpdateState {
+  state: "new" | "acknowledged" | "resolved" | "archived";
+}
 
 export interface DtosPaginationResponseDtosFeedMessage {
   items?: DtosFeedMessage[];

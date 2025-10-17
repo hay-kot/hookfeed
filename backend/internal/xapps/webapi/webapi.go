@@ -133,8 +133,12 @@ func (ib *WebAPI) routes() chi.Router {
 		r.HandleFunc("GET /api/v1/feed-messages", adapter.Adapt(feedmessageCtrl.GetAll))
 		r.HandleFunc("POST /api/v1/feed-messages", adapter.Adapt(feedmessageCtrl.Create))
 		r.HandleFunc("GET /api/v1/feed-messages/{id}", adapter.Adapt(feedmessageCtrl.Get))
-		r.HandleFunc("PUT /api/v1/feed-messages/{id}", adapter.Adapt(feedmessageCtrl.Update))
+		r.HandleFunc("PATCH /api/v1/feed-messages/{id}/state", adapter.Adapt(feedmessageCtrl.UpdateState))
 		r.HandleFunc("DELETE /api/v1/feed-messages/{id}", adapter.Adapt(feedmessageCtrl.Delete))
+		r.HandleFunc("GET /api/v1/feeds/{feed-slug}/messages", adapter.Adapt(feedmessageCtrl.GetByFeedSlug))
+		r.HandleFunc("POST /api/v1/feeds/{feed-slug}/messages/bulk-state", adapter.Adapt(feedmessageCtrl.BulkUpdateState))
+		r.HandleFunc("POST /api/v1/feeds/{feed-slug}/messages/bulk-delete", adapter.Adapt(feedmessageCtrl.BulkDelete))
+		r.HandleFunc("GET /api/v1/messages/search", adapter.Adapt(feedmessageCtrl.Search))
 		// $scaffold_inject_routes
 	})
 

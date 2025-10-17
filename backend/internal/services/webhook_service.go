@@ -1,10 +1,12 @@
 package services
 
 import (
+	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"time"
 
-	"github.com/google/uuid"
 	"github.com/hay-kot/hookfeed/backend/internal/core/feeds"
 	"github.com/hay-kot/hookfeed/backend/internal/data/dtos"
 	"github.com/rs/zerolog"
@@ -18,19 +20,21 @@ var (
 )
 
 type WebhookService struct {
-	logger      zerolog.Logger
-	feedService *FeedService
+	logger             zerolog.Logger
+	feedService        *FeedService
+	feedMessageService *FeedMessageService
 }
 
-func NewWebhookService(logger zerolog.Logger, feedService *FeedService) *WebhookService {
+func NewWebhookService(logger zerolog.Logger, feedService *FeedService, feedMessageService *FeedMessageService) *WebhookService {
 	return &WebhookService{
-		logger:      logger.With().Str("service", "webhook").Logger(),
-		feedService: feedService,
+		logger:             logger.With().Str("service", "webhook").Logger(),
+		feedService:        feedService,
+		feedMessageService: feedMessageService,
 	}
 }
 
 // ProcessWebhook handles the incoming webhook request
-func (w *WebhookService) ProcessWebhook(req dtos.WebhookRequest) (*dtos.WebhookResponse, error) {
+func (w *WebhookService) ProcessWebhook(ctx context.Context, req dtos.WebhookRequest) (*dtos.WebhookResponse, error) {
 	// Log the incoming request
 	w.logger.Info().
 		Str("slug", req.FeedKey).
@@ -57,25 +61,59 @@ func (w *WebhookService) ProcessWebhook(req dtos.WebhookRequest) (*dtos.WebhookR
 		Interface("headers", req.Headers).
 		Msg("webhook payload")
 
-	// Generate a message ID for tracking
-	messageID := uuid.New()
+	// Convert request body and headers to JSON
+	rawRequest, err := json.Marshal(req.Body)
+	if err != nil {
+		w.logger.Error().
+			Err(err).
+			Msg("failed to marshal request body")
+		return nil, fmt.Errorf("failed to marshal request body: %w", err)
+	}
+
+	rawHeaders, err := json.Marshal(req.Headers)
+	if err != nil {
+		w.logger.Error().
+			Err(err).
+			Msg("failed to marshal request headers")
+		return nil, fmt.Errorf("failed to marshal request headers: %w", err)
+	}
+
+	// Create the feed message
+	receivedAt := time.Now()
+	createMsg := dtos.FeedMessageCreate{
+		FeedID:   feed.ID,
+		RawRequest: json.RawMessage(rawRequest),
+		RawHeaders: json.RawMessage(rawHeaders),
+		ReceivedAt: &receivedAt,
+		Logs:       []string{},
+		Metadata:   json.RawMessage("{}"),
+	}
+
+	// Save message to database
+	message, err := w.feedMessageService.Create(ctx, createMsg)
+	if err != nil {
+		w.logger.Error().
+			Err(err).
+			Str("feed_id", feed.ID).
+			Msg("failed to save message to database")
+		return nil, fmt.Errorf("failed to save message: %w", err)
+	}
 
 	w.logger.Info().
-		Str("message_id", messageID.String()).
+		Str("message_id", message.ID.String()).
 		Str("feed_id", feed.ID).
-		Msg("webhook processed successfully")
+		Msg("webhook processed and saved successfully")
 
 	// TODO: In future iterations, we'll:
 	// - Execute global middleware
 	// - Execute feed middleware
 	// - Apply adapters
-	// - Save message to database
 	// - Broadcast via WebSocket
 	// - Enforce retention policies
 
 	return &dtos.WebhookResponse{
 		Success:   true,
-		MessageID: messageID,
+		MessageID: message.ID,
 		FeedID:    feed.ID,
 	}, nil
 }
