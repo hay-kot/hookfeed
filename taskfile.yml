@@ -134,3 +134,8 @@ tasks:
     desc: Send multiple test webhooks (default 5)
     cmds:
       - ./dev/send-webhooks-bulk.sh {{ .CLI_ARGS }}
+
+  msgs:
+    desc: Send test ntfy messages with different priorities
+    cmds:
+      - ./dev/messages.sh {{ .CLI_ARGS }}

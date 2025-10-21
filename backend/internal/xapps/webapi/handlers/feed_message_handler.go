@@ -3,10 +3,10 @@ package handlers
 import (
 	"net/http"
 
-	"github.com/hay-kot/httpkit/server"
 	"github.com/hay-kot/hookfeed/backend/internal/data/dtos"
 	"github.com/hay-kot/hookfeed/backend/internal/services"
 	"github.com/hay-kot/hookfeed/backend/internal/web/extractors"
+	"github.com/hay-kot/httpkit/server"
 )
 
 type FeedMessageController struct {
@@ -19,37 +19,9 @@ func NewFeedMessageController(service *services.FeedMessageService) *FeedMessage
 	}
 }
 
-// GetAll godoc
-//
-//	@Tags			FeedMessage
-//	@Summary		List all FeedMessages
-//	@Description	List all FeedMessages
-//	@Accept			json
-//	@Produce		json
-//	@Success		200		{object}	dtos.PaginationResponse[dtos.FeedMessage]	"A list of FeedMessages"
-//	@Param			orderBy	query		string										false	"order by"						Enums(created_at,received_at)
-//	@Param			skip	query		int											false	"The number of items to skip"	default(0)
-//	@Param			limit	query		int											false	"The number of items to return"	default(100)
-//	@Router			/v1/feed-messages [GET]
-//	@Security		Bearer
-func (uc *FeedMessageController) GetAll(w http.ResponseWriter, r *http.Request) error {
-	page, err := extractors.QueryT[services.FeedMessageQuery](r)
-	if err != nil {
-		return err
-	}
-	page.Pagination = page.WithDefaults()
-
-	entities, err := uc.service.GetAll(r.Context(), page)
-	if err != nil {
-		return err
-	}
-
-	return server.JSON(w, http.StatusOK, entities)
-}
-
 // Get godoc
 //
-//	@Tags			FeedMessage
+//	@Tags			Feed Messages
 //	@Summary		Get a FeedMessage
 //	@Description	Get a FeedMessage
 //	@Accept			json
@@ -72,57 +44,23 @@ func (uc *FeedMessageController) Get(w http.ResponseWriter, r *http.Request) err
 	return server.JSON(w, http.StatusOK, entity)
 }
 
-// GetByFeedSlug godoc
-//
-//	@Tags			FeedMessage
-//	@Summary		List messages by feed slug
-//	@Description	List messages for a specific feed with optional filters
-//	@Accept			json
-//	@Produce		json
-//	@Param			feed-slug	path		string	true	"The Feed Slug"
-//	@Param			level		query		string	false	"Filter by level"	Enums(info,warning,error,success,debug)
-//	@Param			state		query		string	false	"Filter by state"	Enums(new,acknowledged,resolved,archived)
-//	@Param			since		query		string	false	"Filter by received date (ISO 8601)"
-//	@Param			until		query		string	false	"Filter by received date (ISO 8601)"
-//	@Param			skip		query		int		false	"The number of items to skip"	default(0)
-//	@Param			limit		query		int		false	"The number of items to return"	default(100)
-//	@Success		200			{object}	dtos.PaginationResponse[dtos.FeedMessage]
-//	@Router			/v1/feeds/{feed-slug}/messages [GET]
-//	@Security		Bearer
-func (uc *FeedMessageController) GetByFeedSlug(w http.ResponseWriter, r *http.Request) error {
-	feedSlug := r.PathValue("feed-slug")
-
-	query, err := extractors.QueryT[dtos.FeedMessageQuery](r)
-	if err != nil {
-		return err
-	}
-	query.Pagination = query.WithDefaults()
-
-	entities, err := uc.service.GetByFeedSlug(r.Context(), feedSlug, query)
-	if err != nil {
-		return err
-	}
-
-	return server.JSON(w, http.StatusOK, entities)
-}
-
 // Search godoc
 //
-//	@Tags			FeedMessage
+//	@Tags			Feed Messages
 //	@Summary		Search messages
 //	@Description	Search messages with optional filters
 //	@Accept			json
 //	@Produce		json
 //	@Param			feedSlug	query		string	false	"Filter by feed slug"
-//	@Param			level		query		string	false	"Filter by level"	Enums(info,warning,error,success,debug)
-//	@Param			state		query		string	false	"Filter by state"	Enums(new,acknowledged,resolved,archived)
+//	@Param			priority	query		int		false	"Filter by priority (1-5)"	minimum(1)	maximum(5)
+//	@Param			state		query		string	false	"Filter by state"			Enums(new,acknowledged,resolved,archived)
 //	@Param			since		query		string	false	"Filter by received date (ISO 8601)"
 //	@Param			until		query		string	false	"Filter by received date (ISO 8601)"
 //	@Param			q			query		string	false	"Search query"
 //	@Param			skip		query		int		false	"The number of items to skip"	default(0)
 //	@Param			limit		query		int		false	"The number of items to return"	default(100)
 //	@Success		200			{object}	dtos.PaginationResponse[dtos.FeedMessage]
-//	@Router			/v1/messages/search [GET]
+//	@Router			/v1/feed-messages [GET]
 //	@Security		Bearer
 func (uc *FeedMessageController) Search(w http.ResponseWriter, r *http.Request) error {
 	query, err := extractors.QueryT[dtos.FeedMessageQuery](r)
@@ -141,7 +79,7 @@ func (uc *FeedMessageController) Search(w http.ResponseWriter, r *http.Request) 
 
 // Create godoc
 //
-//	@Tags			FeedMessage
+//	@Tags			Feed Messages
 //	@Summary		Create a new FeedMessage
 //	@Description	Create a new FeedMessage
 //	@Accept			json
@@ -166,7 +104,7 @@ func (uc *FeedMessageController) Create(w http.ResponseWriter, r *http.Request) 
 
 // UpdateState godoc
 //
-//	@Tags			FeedMessage
+//	@Tags			Feed Messages
 //	@Summary		Update a FeedMessage state
 //	@Description	Update a FeedMessage state
 //	@Accept			json
@@ -197,7 +135,7 @@ func (uc *FeedMessageController) UpdateState(w http.ResponseWriter, r *http.Requ
 
 // BulkUpdateState godoc
 //
-//	@Tags			FeedMessage
+//	@Tags			Feed Messages
 //	@Summary		Bulk update message states
 //	@Description	Bulk update message states for a feed
 //	@Accept			json
@@ -223,7 +161,7 @@ func (uc *FeedMessageController) BulkUpdateState(w http.ResponseWriter, r *http.
 
 // BulkDelete godoc
 //
-//	@Tags			FeedMessage
+//	@Tags			Feed Messages
 //	@Summary		Bulk delete messages
 //	@Description	Bulk delete messages for a feed
 //	@Accept			json
@@ -249,7 +187,7 @@ func (uc *FeedMessageController) BulkDelete(w http.ResponseWriter, r *http.Reque
 
 // Delete godoc
 //
-//	@Tags			FeedMessage
+//	@Tags			Feed Messages
 //	@Summary		Delete a FeedMessage
 //	@Description	Delete a FeedMessage
 //	@Accept			json

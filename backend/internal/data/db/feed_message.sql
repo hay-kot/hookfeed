@@ -13,7 +13,7 @@ INSERT INTO feed_messages (
     raw_headers,
     title,
     message,
-    level,
+    priority,
     logs,
     metadata,
     state,
@@ -21,7 +21,7 @@ INSERT INTO feed_messages (
     processed_at
 ) VALUES (
     $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
-) RETURNING id, feed_slug, raw_request, raw_headers, title, message, level, logs, metadata, state, state_changed_at, received_at, processed_at, created_at, updated_at;
+) RETURNING id, feed_slug, raw_request, raw_headers, title, message, priority, logs, metadata, state, state_changed_at, received_at, processed_at, created_at, updated_at;
 
 -- name: FeedMessageGetAll :many
 SELECT
@@ -62,7 +62,7 @@ FROM
     feed_messages_view
 WHERE
     feed_slug = $1
-    AND (sqlc.narg('level')::text IS NULL OR level = sqlc.narg('level'))
+    AND (sqlc.narg('priority')::integer IS NULL OR priority = sqlc.narg('priority'))
     AND (sqlc.narg('state')::text IS NULL OR state = sqlc.narg('state'))
     AND (sqlc.narg('since')::timestamp IS NULL OR received_at >= sqlc.narg('since'))
     AND (sqlc.narg('until')::timestamp IS NULL OR received_at <= sqlc.narg('until'))
@@ -79,7 +79,7 @@ FROM
     feed_messages_view
 WHERE
     feed_slug = $1
-    AND (sqlc.narg('level')::text IS NULL OR level = sqlc.narg('level'))
+    AND (sqlc.narg('priority')::integer IS NULL OR priority = sqlc.narg('priority'))
     AND (sqlc.narg('state')::text IS NULL OR state = sqlc.narg('state'))
     AND (sqlc.narg('since')::timestamp IS NULL OR received_at >= sqlc.narg('since'))
     AND (sqlc.narg('until')::timestamp IS NULL OR received_at <= sqlc.narg('until'));
@@ -91,7 +91,7 @@ SET
     state_changed_at = CURRENT_TIMESTAMP
 WHERE
     id = $1
-RETURNING id, feed_slug, raw_request, raw_headers, title, message, level, logs, metadata, state, state_changed_at, received_at, processed_at, created_at, updated_at;
+RETURNING id, feed_slug, raw_request, raw_headers, title, message, priority, logs, metadata, state, state_changed_at, received_at, processed_at, created_at, updated_at;
 
 -- name: FeedMessageDeleteByID :exec
 DELETE FROM
@@ -119,7 +119,7 @@ DELETE FROM
     feed_messages
 WHERE
     feed_slug = $1
-    AND (sqlc.narg('level')::text IS NULL OR level = sqlc.narg('level'))
+    AND (sqlc.narg('priority')::integer IS NULL OR priority = sqlc.narg('priority'))
     AND (sqlc.narg('older_than')::timestamp IS NULL OR received_at < sqlc.narg('older_than'))
 RETURNING COUNT(*);
 
@@ -131,7 +131,7 @@ FROM
     INNER JOIN feed_messages fm ON v.id = fm.id
 WHERE
     (sqlc.narg('feed_slug')::text IS NULL OR v.feed_slug = sqlc.narg('feed_slug'))
-    AND (sqlc.narg('level')::text IS NULL OR v.level = sqlc.narg('level'))
+    AND (sqlc.narg('priority')::integer IS NULL OR v.priority = sqlc.narg('priority'))
     AND (sqlc.narg('state')::text IS NULL OR v.state = sqlc.narg('state'))
     AND (sqlc.narg('since')::timestamp IS NULL OR v.received_at >= sqlc.narg('since'))
     AND (sqlc.narg('until')::timestamp IS NULL OR v.received_at <= sqlc.narg('until'))
@@ -150,7 +150,7 @@ FROM
     INNER JOIN feed_messages fm ON v.id = fm.id
 WHERE
     (sqlc.narg('feed_slug')::text IS NULL OR v.feed_slug = sqlc.narg('feed_slug'))
-    AND (sqlc.narg('level')::text IS NULL OR v.level = sqlc.narg('level'))
+    AND (sqlc.narg('priority')::integer IS NULL OR v.priority = sqlc.narg('priority'))
     AND (sqlc.narg('state')::text IS NULL OR v.state = sqlc.narg('state'))
     AND (sqlc.narg('since')::timestamp IS NULL OR v.received_at >= sqlc.narg('since'))
     AND (sqlc.narg('until')::timestamp IS NULL OR v.received_at <= sqlc.narg('until'))

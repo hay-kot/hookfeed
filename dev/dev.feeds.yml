@@ -56,3 +56,15 @@ feeds:
     retention:
       maxCount: 100
       maxAgeDays: 1
+
+  - name: "Ntfy Messages"
+    id: "ntfy-test"
+    keys:
+      - ntfy-test # Simple key matching the topic name for ntfy compatibility
+    description: "Feed for testing ntfy-compatible notifications"
+
+    adapters: []
+
+    retention:
+      maxCount: 500
+      maxAgeDays: 7

@@ -9,7 +9,7 @@ SELECT
     raw_headers,
     title,
     message,
-    level,
+    priority,
     logs,
     metadata,
     state,

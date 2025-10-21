@@ -23,7 +23,7 @@ func NewAuthController(userservice *services.UserService, pwservice *services.Pa
 
 // Register godoc
 //
-//	@Tags			User
+//	@Tags			Auth
 //	@Summary		Register a new user
 //	@Description	Register a new user
 //	@Accept			json

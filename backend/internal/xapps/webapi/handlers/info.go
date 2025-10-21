@@ -11,7 +11,7 @@ import (
 //
 //	@Summary		Get the status of the service
 //	@Description	Get the status of the service
-//	@Tags			status
+//	@Tags			Status
 //	@Accept			json
 //	@Produce		json
 //	@Success		200	{object}	dtos.StatusResponse

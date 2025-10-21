@@ -75,7 +75,7 @@ func (s *FeedMessageService) GetAll(ctx context.Context, page FeedMessageQuery) 
 func (s *FeedMessageService) GetByFeedSlug(ctx context.Context, feedSlug string, query dtos.FeedMessageQuery) (dtos.PaginationResponse[dtos.FeedMessage], error) {
 	count, err := s.db.FeedMessagesByFeedSlugCount(ctx, db.FeedMessagesByFeedSlugCountParams{
 		FeedSlug: feedSlug,
-		Level:    query.Level,
+		Priority: query.Priority,
 		State:    query.State,
 		Since:    timePtrToPgTimestamp(query.Since),
 		Until:    timePtrToPgTimestamp(query.Until),
@@ -86,7 +86,7 @@ func (s *FeedMessageService) GetByFeedSlug(ctx context.Context, feedSlug string,
 
 	rows, err := s.db.FeedMessagesByFeedSlug(ctx, db.FeedMessagesByFeedSlugParams{
 		FeedSlug: feedSlug,
-		Level:    query.Level,
+		Priority: query.Priority,
 		State:    query.State,
 		Since:    timePtrToPgTimestamp(query.Since),
 		Until:    timePtrToPgTimestamp(query.Until),
@@ -112,7 +112,7 @@ func (s *FeedMessageService) GetByFeedSlug(ctx context.Context, feedSlug string,
 func (s *FeedMessageService) Search(ctx context.Context, query dtos.FeedMessageQuery) (dtos.PaginationResponse[dtos.FeedMessage], error) {
 	count, err := s.db.FeedMessageSearchCount(ctx, db.FeedMessageSearchCountParams{
 		FeedSlug: query.FeedSlug,
-		Level:    query.Level,
+		Priority: query.Priority,
 		State:    query.State,
 		Since:    timePtrToPgTimestamp(query.Since),
 		Until:    timePtrToPgTimestamp(query.Until),
@@ -124,7 +124,7 @@ func (s *FeedMessageService) Search(ctx context.Context, query dtos.FeedMessageQ
 
 	rows, err := s.db.FeedMessageSearch(ctx, db.FeedMessageSearchParams{
 		FeedSlug: query.FeedSlug,
-		Level:    query.Level,
+		Priority: query.Priority,
 		State:    query.State,
 		Since:    timePtrToPgTimestamp(query.Since),
 		Until:    timePtrToPgTimestamp(query.Until),
@@ -149,9 +149,9 @@ func (s *FeedMessageService) Search(ctx context.Context, query dtos.FeedMessageQ
 }
 
 func (s *FeedMessageService) Create(ctx context.Context, data dtos.FeedMessageCreate) (dtos.FeedMessage, error) {
-	level := "info"
-	if data.Level != nil {
-		level = *data.Level
+	priority := int32(3)
+	if data.Priority != nil {
+		priority = *data.Priority
 	}
 
 	state := "new"
@@ -170,7 +170,7 @@ func (s *FeedMessageService) Create(ctx context.Context, data dtos.FeedMessageCr
 		RawHeaders:  []byte(data.RawHeaders),
 		Title:       data.Title,
 		Message:     data.Message,
-		Level:       &level,
+		Priority:    &priority,
 		Logs:        data.Logs,
 		Metadata:    []byte(data.Metadata),
 		State:       &state,
@@ -182,23 +182,7 @@ func (s *FeedMessageService) Create(ctx context.Context, data dtos.FeedMessageCr
 	}
 
 	// Convert row to view type
-	view := db.FeedMessagesView{
-		ID:             row.ID,
-		FeedSlug:       row.FeedSlug,
-		RawRequest:     row.RawRequest,
-		RawHeaders:     row.RawHeaders,
-		Title:          row.Title,
-		Message:        row.Message,
-		Level:          row.Level,
-		Logs:           row.Logs,
-		Metadata:       row.Metadata,
-		State:          row.State,
-		StateChangedAt: row.StateChangedAt,
-		ReceivedAt:     row.ReceivedAt,
-		ProcessedAt:    row.ProcessedAt,
-		CreatedAt:      row.CreatedAt,
-		UpdatedAt:      row.UpdatedAt,
-	}
+	view := db.FeedMessagesView(row)
 
 	return s.mapper(view), nil
 }
@@ -213,23 +197,7 @@ func (s *FeedMessageService) UpdateState(ctx context.Context, id uuid.UUID, stat
 	}
 
 	// Convert row to view type
-	view := db.FeedMessagesView{
-		ID:             row.ID,
-		FeedSlug:       row.FeedSlug,
-		RawRequest:     row.RawRequest,
-		RawHeaders:     row.RawHeaders,
-		Title:          row.Title,
-		Message:        row.Message,
-		Level:          row.Level,
-		Logs:           row.Logs,
-		Metadata:       row.Metadata,
-		State:          row.State,
-		StateChangedAt: row.StateChangedAt,
-		ReceivedAt:     row.ReceivedAt,
-		ProcessedAt:    row.ProcessedAt,
-		CreatedAt:      row.CreatedAt,
-		UpdatedAt:      row.UpdatedAt,
-	}
+	view := db.FeedMessagesView(row)
 
 	return s.mapper(view), nil
 }

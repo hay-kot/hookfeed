@@ -15,6 +15,7 @@ type Config struct {
 	CompanyName string `json:"company_name" conf:"default:Gottl Inc."`
 	WebURL      string `json:"web_url"      conf:"default:http://localhost:8080"`
 	FeedFile    string `json:"feed_file"    conf:"default:"`
+	NtfyEnabled bool   `json:"ntfy_enabled" conf:"default:true"` // Enable ntfy-compatible endpoint
 }
 
 // Service is a collection of all services in the application

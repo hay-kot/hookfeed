@@ -85,7 +85,6 @@ func (ib *WebAPI) routes() chi.Router {
 		middleware.StripSlashes,
 		mid.RequestID(),
 		mid.Logger(ib.l, ""),
-		middleware.AllowContentType("application/json", "text/plain", "text/html"),
 	)
 
 	// Basic CORS
@@ -116,6 +115,11 @@ func (ib *WebAPI) routes() chi.Router {
 	// Webhook ingestion endpoint (no auth required)
 	mux.Post("/hooks/{key}", adapter.Adapt(webhookctrl.HandleWebhook))
 
+	// Ntfy-compatible endpoint (no auth required)
+	ntfyctrl := handlers.NewNtfyController(ib.l, ib.services.FeedMessages, ib.services.Feeds)
+	mux.Post("/{topic}", adapter.Adapt(ntfyctrl.Publish))
+	mux.Put("/{topic}", adapter.Adapt(ntfyctrl.Publish))
+
 	mux.Post("/api/v1/users/login", adapter.Adapt(userctrl.Authenticate))
 	mux.Post("/api/v1/users/register", adapter.Adapt(userctrl.Register))
 	mux.Post("/api/v1/users/reset-password-request", adapter.Adapt(userctrl.ResetPasswordRequest))
@@ -130,15 +134,13 @@ func (ib *WebAPI) routes() chi.Router {
 		r.Get("/api/v1/feeds", adapter.Adapt(feedctrl.GetAll))
 
 		feedmessageCtrl := handlers.NewFeedMessageController(ib.services.FeedMessages)
-		r.HandleFunc("GET /api/v1/feed-messages", adapter.Adapt(feedmessageCtrl.GetAll))
+		r.HandleFunc("GET /api/v1/feed-messages", adapter.Adapt(feedmessageCtrl.Search))
 		r.HandleFunc("POST /api/v1/feed-messages", adapter.Adapt(feedmessageCtrl.Create))
 		r.HandleFunc("GET /api/v1/feed-messages/{id}", adapter.Adapt(feedmessageCtrl.Get))
 		r.HandleFunc("PATCH /api/v1/feed-messages/{id}/state", adapter.Adapt(feedmessageCtrl.UpdateState))
 		r.HandleFunc("DELETE /api/v1/feed-messages/{id}", adapter.Adapt(feedmessageCtrl.Delete))
-		r.HandleFunc("GET /api/v1/feeds/{feed-slug}/messages", adapter.Adapt(feedmessageCtrl.GetByFeedSlug))
 		r.HandleFunc("POST /api/v1/feeds/{feed-slug}/messages/bulk-state", adapter.Adapt(feedmessageCtrl.BulkUpdateState))
 		r.HandleFunc("POST /api/v1/feeds/{feed-slug}/messages/bulk-delete", adapter.Adapt(feedmessageCtrl.BulkDelete))
-		r.HandleFunc("GET /api/v1/messages/search", adapter.Adapt(feedmessageCtrl.Search))
 		// $scaffold_inject_routes
 	})
 

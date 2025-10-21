@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS feed_messages (
     raw_headers JSONB NOT NULL,
     title VARCHAR(500),
     message TEXT,
-    level VARCHAR(20) DEFAULT 'info',
+    priority INTEGER DEFAULT 3,
     logs TEXT[] DEFAULT '{}',
     metadata JSONB DEFAULT '{}'::jsonb,
     state VARCHAR(20) DEFAULT 'new',
@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS feed_messages (
 
 CREATE INDEX IF NOT EXISTS idx_feed_messages_feed_slug ON feed_messages(feed_slug);
 CREATE INDEX IF NOT EXISTS idx_feed_messages_received_at ON feed_messages(received_at DESC);
-CREATE INDEX IF NOT EXISTS idx_feed_messages_level ON feed_messages(level);
+CREATE INDEX IF NOT EXISTS idx_feed_messages_priority ON feed_messages(priority);
 CREATE INDEX IF NOT EXISTS idx_feed_messages_state ON feed_messages(state);
 CREATE INDEX IF NOT EXISTS idx_feed_messages_feed_received ON feed_messages(feed_slug, received_at DESC);
 CREATE INDEX IF NOT EXISTS idx_feed_messages_feed_state ON feed_messages(feed_slug, state);

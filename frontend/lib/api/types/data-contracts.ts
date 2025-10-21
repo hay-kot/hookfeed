@@ -24,10 +24,10 @@ export interface DtosFeedMessage {
   createdAt?: string;
   feedSlug?: string;
   id?: string;
-  level?: string;
   logs?: string[];
   message?: string;
   metadata?: number[];
+  priority?: number;
   processedAt?: string;
   rawHeaders?: number[];
   rawRequest?: number[];
@@ -51,10 +51,14 @@ export interface DtosFeedMessageBulkUpdateState {
 
 export interface DtosFeedMessageCreate {
   feedSlug: string;
-  level?: "info" | "warning" | "error" | "success" | "debug";
   logs?: string[];
   message?: string;
   metadata?: number[];
+  /**
+   * @min 1
+   * @max 5
+   */
+  priority?: number;
   processedAt?: string;
   rawHeaders: number[];
   rawRequest: number[];
@@ -64,8 +68,12 @@ export interface DtosFeedMessageCreate {
 }
 
 export interface DtosFeedMessageDeleteFilter {
-  level?: "info" | "warning" | "error" | "success" | "debug";
   olderThan?: string;
+  /**
+   * @min 1
+   * @max 5
+   */
+  priority?: number;
 }
 
 export interface DtosFeedMessageUpdateState {

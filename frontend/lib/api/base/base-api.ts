@@ -1,0 +1,102 @@
+import type { Requests } from "../../requests/requests";
+
+const ZERO_DATE = "0001-01-01T00:00:00Z";
+
+type BaseApiType = {
+  createdAt: string;
+  updatedAt: string;
+
+  [key: string]: any;
+};
+
+export function hasKey(
+  obj: Record<string, any>,
+  key: string,
+): obj is Required<BaseApiType> {
+  return key in obj ? typeof obj[key] === "string" : false;
+}
+
+export function parseDate<T>(obj: T, keys: (keyof T)[] = []): T {
+  const result = { ...obj };
+  [...keys, "createdAt", "updatedAt"].forEach((key) => {
+    // @ts-expect-error - TS doesn't know that we're checking for the key above
+    if (hasKey(result, key)) {
+      const value = result[key] as string;
+
+      if (value === undefined || value === "" || value.startsWith(ZERO_DATE)) {
+        const dt = new Date();
+        dt.setFullYear(1);
+
+        result[key] = dt;
+        return;
+      }
+
+      // Possible Formats
+      // Date Only: YYYY-MM-DD
+      // Timestamp: 0001-01-01T00:00:00Z
+
+      // Parse timestamps with default date
+      if (value.includes("T")) {
+        result[key] = new Date(value);
+        return;
+      }
+
+      // Parse dates with default time
+      const split = value.split("-");
+
+      if (split.length !== 3) {
+        console.log(`Invalid date format: ${value}`);
+        throw new Error(`Invalid date format: ${value}`);
+      }
+
+      const [year, month, day] = split;
+
+      const dt = new Date();
+
+      dt.setFullYear(parseInt(year, 10));
+      dt.setMonth(parseInt(month, 10) - 1);
+      dt.setDate(parseInt(day, 10));
+
+      result[key] = dt;
+    }
+  });
+
+  return result;
+}
+
+export interface Bus {
+  publish(topic: string, payload: any): void;
+}
+
+export class BaseAPI {
+  http: Requests;
+  bus: Bus;
+
+  constructor(requests: Requests, bus: Bus | undefined = undefined) {
+    this.http = requests;
+
+    if (!bus) {
+      this.bus = { publish: () => { } };
+    } else {
+      this.bus = bus;
+    }
+  }
+
+  /**
+   * dropFields will remove any fields that are specified in the fields array
+   * additionally, it will remove the `createdAt` and `updatedAt` fields if they
+   * are present. This is useful for when you want to send a subset of fields to
+   * the server like when performing an update.
+   */
+  protected dropFields<T>(obj: T, keys: (keyof T)[] = []): T {
+    const result = { ...obj };
+    [...keys, "createdAt", "updatedAt"].forEach((key) => {
+      // @ts-expect-error- we are checking for the key above
+      if (hasKey(result, key)) {
+        // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+        delete result[key];
+      }
+    });
+    return result;
+  }
+}

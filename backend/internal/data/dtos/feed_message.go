@@ -9,16 +9,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-type MessageLevel string
-
-const (
-	MessageLevelInfo    MessageLevel = "info"
-	MessageLevelWarning MessageLevel = "warning"
-	MessageLevelError   MessageLevel = "error"
-	MessageLevelSuccess MessageLevel = "success"
-	MessageLevelDebug   MessageLevel = "debug"
-)
-
 type MessageState string
 
 const (
@@ -35,7 +25,7 @@ type FeedMessage struct {
 	RawHeaders     json.RawMessage `json:"rawHeaders,omitempty"`
 	Title          *string         `json:"title"`
 	Message        *string         `json:"message"`
-	Level          string          `json:"level"`
+	Priority       int32           `json:"priority"`
 	Logs           []string        `json:"logs"`
 	Metadata       json.RawMessage `json:"metadata"`
 	State          string          `json:"state"`
@@ -53,7 +43,7 @@ type FeedMessageCreate struct {
 	RawHeaders  json.RawMessage `json:"rawHeaders"  validate:"required"`
 	Title       *string         `json:"title"`
 	Message     *string         `json:"message"`
-	Level       *string         `json:"level"       validate:"omitempty,oneof=info warning error success debug"`
+	Priority    *int32          `json:"priority"    validate:"omitempty,min=1,max=5"`
 	Logs        []string        `json:"logs"`
 	Metadata    json.RawMessage `json:"metadata"`
 	State       *string         `json:"state"       validate:"omitempty,oneof=new acknowledged resolved archived"`
@@ -64,7 +54,7 @@ type FeedMessageCreate struct {
 type FeedMessageUpdate struct {
 	Title    *string         `json:"title"`
 	Message  *string         `json:"message"`
-	Level    *string         `json:"level"    validate:"omitempty,oneof=info warning error success debug"`
+	Priority *int32          `json:"priority" validate:"omitempty,min=1,max=5"`
 	State    *string         `json:"state"    validate:"omitempty,oneof=new acknowledged resolved archived"`
 	Logs     []string        `json:"logs"`
 	Metadata json.RawMessage `json:"metadata"`
@@ -85,14 +75,14 @@ type FeedMessageBulkDelete struct {
 }
 
 type FeedMessageDeleteFilter struct {
-	Level     *string    `json:"level"     validate:"omitempty,oneof=info warning error success debug"`
+	Priority  *int32     `json:"priority"  validate:"omitempty,min=1,max=5"`
 	OlderThan *time.Time `json:"olderThan"`
 }
 
 type FeedMessageQuery struct {
 	Pagination
 	FeedSlug *string    `json:"feedSlug" query:"feedSlug"`
-	Level    *string    `json:"level"    validate:"omitempty,oneof=info warning error success debug"   query:"level"`
+	Priority *int32     `json:"priority" validate:"omitempty,min=1,max=5"                              query:"priority"`
 	State    *string    `json:"state"    validate:"omitempty,oneof=new acknowledged resolved archived" query:"state"`
 	Since    *time.Time `json:"since"    query:"since"`
 	Until    *time.Time `json:"until"    query:"until"`
@@ -100,9 +90,9 @@ type FeedMessageQuery struct {
 }
 
 func MapFeedMessage(d db.FeedMessage) FeedMessage {
-	level := "info"
-	if d.Level != nil {
-		level = *d.Level
+	priority := int32(3)
+	if d.Priority != nil {
+		priority = *d.Priority
 	}
 
 	state := "new"
@@ -118,7 +108,7 @@ func MapFeedMessage(d db.FeedMessage) FeedMessage {
 		RawHeaders:     json.RawMessage(d.RawHeaders),
 		Title:          d.Title,
 		Message:        d.Message,
-		Level:          level,
+		Priority:       priority,
 		Logs:           d.Logs,
 		Metadata:       json.RawMessage(d.Metadata),
 		State:          state,
@@ -132,9 +122,9 @@ func MapFeedMessage(d db.FeedMessage) FeedMessage {
 }
 
 func MapFeedMessageView(d db.FeedMessagesView) FeedMessage {
-	level := "info"
-	if d.Level != nil {
-		level = *d.Level
+	priority := int32(3)
+	if d.Priority != nil {
+		priority = *d.Priority
 	}
 
 	state := "new"
@@ -150,7 +140,7 @@ func MapFeedMessageView(d db.FeedMessagesView) FeedMessage {
 		RawHeaders:     json.RawMessage(d.RawHeaders),
 		Title:          d.Title,
 		Message:        d.Message,
-		Level:          level,
+		Priority:       priority,
 		Logs:           d.Logs,
 		Metadata:       json.RawMessage(d.Metadata),
 		State:          state,
@@ -169,14 +159,4 @@ func pgTimestampToTimePtr(ts pgtype.Timestamp) *time.Time {
 		return nil
 	}
 	return &ts.Time
-}
-
-func timePtrToPgTimestamp(t *time.Time) pgtype.Timestamp {
-	if t == nil {
-		return pgtype.Timestamp{}
-	}
-	return pgtype.Timestamp{
-		Time:  *t,
-		Valid: true,
-	}
 }
