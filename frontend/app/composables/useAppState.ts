@@ -1,7 +1,9 @@
 /**
  * Composable for managing global application state
- * Contains placeholder feed data and notification state
+ * Fetches and manages feed data from the API
  */
+
+import type { DtosFeed } from '~/lib/api/types/data-contracts'
 
 export interface Feed {
   id: string
@@ -12,37 +14,32 @@ export interface Feed {
 }
 
 export const useAppState = () => {
-  // Placeholder feed data - will be replaced with API calls later
-  const feeds = useState<Feed[]>('feeds', () => [
-    {
-      id: '1',
-      name: 'Technology',
-      slug: 'technology',
-      description: 'Tech news and updates',
-      unreadCount: 3,
-    },
-    {
-      id: '2',
-      name: 'News',
-      slug: 'news',
-      description: 'General news feed',
-      unreadCount: 0,
-    },
-    {
-      id: '3',
-      name: 'Alerts',
-      slug: 'alerts',
-      description: 'Important system alerts',
-      unreadCount: 5,
-    },
-    {
-      id: '4',
-      name: 'Development',
-      slug: 'development',
-      description: 'Development notifications',
-      unreadCount: 1,
-    },
-  ])
+  const feeds = useState<Feed[]>('feeds', () => [])
+  const isLoadingFeeds = useState<boolean>('isLoadingFeeds', () => false)
+
+  // Fetch feeds from the API
+  const fetchFeeds = async () => {
+    const { apiClient } = useApiClient()
+
+    try {
+      isLoadingFeeds.value = true
+      const response = await apiClient.get<DtosFeed[]>('/feeds')
+
+      // Map backend DTOs to frontend Feed interface
+      feeds.value = (response.data || []).map(dto => ({
+        id: dto.id || '',
+        name: dto.name || '',
+        slug: dto.id || '', // Backend uses ID as slug
+        description: dto.description || '',
+        unreadCount: 0, // Will be calculated separately
+      }))
+    } catch (error) {
+      console.error('Failed to fetch feeds:', error)
+      feeds.value = []
+    } finally {
+      isLoadingFeeds.value = false
+    }
+  }
 
   // Computed: Check if there are any new messages across all feeds
   const hasNewMessages = computed(() => {
@@ -81,11 +78,13 @@ export const useAppState = () => {
 
   return {
     feeds: readonly(feeds),
+    isLoadingFeeds: readonly(isLoadingFeeds),
     hasNewMessages,
     totalUnreadCount,
     getFeedById,
     getFeedBySlug,
     markFeedAsRead,
     markAllAsRead,
+    fetchFeeds,
   }
 }

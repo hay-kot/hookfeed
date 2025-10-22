@@ -8,6 +8,7 @@ import IconInformation from '~icons/mdi/information'
 // Page metadata
 definePageMeta({
   layout: 'default',
+  middleware: 'auth',
 })
 
 // State management

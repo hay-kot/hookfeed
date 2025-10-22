@@ -9,6 +9,7 @@ import IconCopy from '~icons/mdi/content-copy'
 // Page metadata
 definePageMeta({
   layout: 'default',
+  middleware: 'auth',
 })
 
 // Get feed ID from route
@@ -16,42 +17,15 @@ const route = useRoute()
 const feedId = computed(() => route.params.id as string)
 
 // State management
-const { getFeedById } = useAppState()
-const { generateMessages } = useMockData()
+const { getFeedById, fetchFeeds } = useAppState()
+const { messages, totalMessages, isLoadingMessages, fetchMessages } = useFeedMessages()
 
 // Get current feed
 const currentFeed = computed(() => getFeedById(feedId.value))
 
-// Mock messages data - generate messages for this specific feed
-const messages = ref(generateMessages(12, currentFeed.value?.slug))
-
 // Filters
-const selectedLevel = ref<string>('all')
-const selectedState = ref<string>('all')
+const selectedState = ref<string | undefined>(undefined)
 const searchQuery = ref<string>('')
-
-// Computed: Filtered messages
-const filteredMessages = computed(() => {
-  let filtered = messages.value
-
-  if (selectedLevel.value !== 'all') {
-    filtered = filtered.filter(m => m.level === selectedLevel.value)
-  }
-
-  if (selectedState.value !== 'all') {
-    filtered = filtered.filter(m => m.state === selectedState.value)
-  }
-
-  if (searchQuery.value.trim()) {
-    const query = searchQuery.value.toLowerCase()
-    filtered = filtered.filter(m =>
-      m.title?.toLowerCase().includes(query) ||
-      m.message?.toLowerCase().includes(query),
-    )
-  }
-
-  return filtered
-})
 
 // Computed: Today's messages count
 const todayMessagesCount = computed(() => {
@@ -63,15 +37,64 @@ const todayMessagesCount = computed(() => {
   }).length
 })
 
+// Fetch data on mount and when feedId changes
+onMounted(async () => {
+  await fetchFeeds()
+
+  if (!currentFeed.value) {
+    // Redirect to home if feed not found
+    navigateTo('/')
+    return
+  }
+
+  await fetchMessages({
+    feedSlug: currentFeed.value.slug,
+  })
+})
+
+// Watch feedId changes
+watch(feedId, async (newId) => {
+  const feed = getFeedById(newId)
+  if (!feed) {
+    navigateTo('/')
+    return
+  }
+
+  await fetchMessages({
+    feedSlug: feed.slug,
+    state: selectedState.value as any,
+    q: searchQuery.value || undefined,
+  })
+})
+
+// Watch filters and refetch messages
+watch([selectedState, searchQuery], async () => {
+  if (!currentFeed.value) return
+
+  await fetchMessages({
+    feedSlug: currentFeed.value.slug,
+    state: selectedState.value as any,
+    q: searchQuery.value || undefined,
+    skip: 0,
+  })
+})
+
 // Refresh messages
-const refreshMessages = () => {
-  messages.value = generateMessages(12, currentFeed.value?.slug)
+const refreshMessages = async () => {
+  if (!currentFeed.value) return
+
+  await fetchMessages({
+    feedSlug: currentFeed.value.slug,
+    state: selectedState.value as any,
+    q: searchQuery.value || undefined,
+    skip: 0,
+  })
 }
 
 // Copy webhook URL
 const copyWebhookUrl = async () => {
   if (!currentFeed.value) return
-  const url = `https://hookfeed.example.com/hooks/${currentFeed.value.slug}`
+  const url = `${window.location.origin}/hooks/${currentFeed.value.slug}`
   try {
     await navigator.clipboard.writeText(url)
     // Could add a toast notification here
@@ -79,14 +102,6 @@ const copyWebhookUrl = async () => {
     console.error('Failed to copy:', err)
   }
 }
-
-// Handle feed not found
-onMounted(() => {
-  if (!currentFeed.value) {
-    // Redirect to home if feed not found
-    navigateTo('/')
-  }
-})
 </script>
 
 <template>
@@ -125,12 +140,8 @@ onMounted(() => {
         <!-- Compact inline stats -->
         <div class="hidden md:flex items-center gap-4 text-sm">
           <div class="text-center">
-            <div class="font-bold text-lg text-primary">{{ messages.length }}</div>
+            <div class="font-bold text-lg text-primary">{{ totalMessages }}</div>
             <div class="text-xs text-base-content/60">Total</div>
-          </div>
-          <div class="text-center">
-            <div class="font-bold text-lg">{{ currentFeed.unreadCount }}</div>
-            <div class="text-xs text-base-content/60">Unread</div>
           </div>
           <div class="text-center">
             <div class="font-bold text-lg">{{ todayMessagesCount }}</div>
@@ -160,29 +171,15 @@ onMounted(() => {
       <!-- Filters row -->
       <div class="flex flex-wrap gap-2 items-center justify-between">
         <div class="flex flex-wrap gap-2 flex-1">
-          <select v-model="selectedLevel" class="select select-bordered select-sm">
-            <option value="all">
-              All Levels
-            </option>
-            <option value="info">
-              Info
-            </option>
-            <option value="warning">
-              Warning
-            </option>
-            <option value="error">
-              Error
-            </option>
-            <option value="success">
-              Success
-            </option>
-            <option value="debug">
-              Debug
-            </option>
-          </select>
+          <input
+            v-model="searchQuery"
+            type="text"
+            placeholder="Search messages..."
+            class="input input-bordered input-sm flex-1 min-w-[150px]"
+          >
 
           <select v-model="selectedState" class="select select-bordered select-sm">
-            <option value="all">
+            <option :value="undefined">
               All States
             </option>
             <option value="new">
@@ -199,20 +196,17 @@ onMounted(() => {
             </option>
           </select>
 
-          <input
-            v-model="searchQuery"
-            type="text"
-            placeholder="Search..."
-            class="input input-bordered input-sm w-32 lg:w-48"
-          >
-
           <span class="badge badge-ghost self-center">
-            {{ filteredMessages.length }}
+            {{ messages.length }} messages
           </span>
         </div>
 
-        <button class="btn btn-sm btn-primary gap-1" @click="refreshMessages">
-          <IconRefresh class="h-4 w-4" />
+        <button
+          class="btn btn-sm btn-primary gap-1"
+          @click="refreshMessages"
+          :disabled="isLoadingMessages"
+        >
+          <IconRefresh class="h-4 w-4" :class="{ 'animate-spin': isLoadingMessages }" />
           <span class="hidden sm:inline">Refresh</span>
         </button>
       </div>
@@ -234,25 +228,33 @@ onMounted(() => {
 
     <!-- Messages Container -->
     <div class="space-y-4">
+      <!-- Loading State -->
+      <div
+        v-if="isLoadingMessages"
+        class="flex flex-col items-center justify-center py-16 px-4 bg-base-200 rounded-lg"
+      >
+        <span class="loading loading-spinner loading-lg"></span>
+        <p class="text-base-content/60 mt-4">Loading messages...</p>
+      </div>
+
       <!-- Empty State -->
       <div
-        v-if="filteredMessages.length === 0"
+        v-else-if="messages.length === 0"
         class="flex flex-col items-center justify-center py-16 px-4 bg-base-200 rounded-lg"
       >
         <IconInbox class="h-16 w-16 text-base-content/20 mb-4" />
         <h3 class="text-xl font-semibold mb-2">
-          {{ messages.length === 0 ? `No Messages in ${currentFeed.name}` : 'No Messages Found' }}
+          No Messages in {{ currentFeed.name }}
         </h3>
         <p class="text-base-content/60 text-center max-w-md">
-          {{ messages.length === 0
-            ? 'Messages sent to this feed will appear here. Use the webhook URL above to send messages.'
-            : 'No messages match the selected filters. Try adjusting your filter criteria.' }}
+          Messages sent to this feed will appear here. Use the webhook URL above to send messages.
         </p>
       </div>
 
       <!-- Message Cards -->
       <MessageCard
-        v-for="message in filteredMessages"
+        v-else
+        v-for="message in messages"
         :key="message.id"
         :message="message"
       />

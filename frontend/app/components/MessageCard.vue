@@ -17,12 +17,12 @@ interface Props {
 }
 
 const props = defineProps<Props>()
-const { decodeJSON } = useMockData()
+const { updateMessageState, deleteMessage } = useFeedMessages()
 
-// Decode JSON fields
-const metadata = computed(() => decodeJSON(props.message.metadata || []))
-const rawRequest = computed(() => decodeJSON(props.message.rawRequest || []))
-const rawHeaders = computed(() => decodeJSON(props.message.rawHeaders || []))
+// Data is already JSON objects from the backend
+const metadata = computed(() => props.message.metadata)
+const rawRequest = computed(() => props.message.rawRequest)
+const rawHeaders = computed(() => props.message.rawHeaders)
 
 // Level colors
 const levelColors = {
@@ -79,6 +79,41 @@ const formatRelativeTime = (timestamp?: string) => {
 
 const toggleExpand = () => {
   isExpanded.value = !isExpanded.value
+}
+
+// State management
+const showStateMenu = ref(false)
+
+// Copy message ID to clipboard
+const copyId = async () => {
+  if (!props.message.id) return
+  try {
+    await navigator.clipboard.writeText(props.message.id)
+    // Could add a toast notification here
+  } catch (err) {
+    console.error('Failed to copy ID:', err)
+  }
+}
+
+// Mark message as acknowledged (read)
+const markAsRead = async () => {
+  if (!props.message.id) return
+  await updateMessageState(props.message.id, 'acknowledged')
+}
+
+// Change message state
+const changeState = async (newState: 'new' | 'acknowledged' | 'resolved' | 'archived') => {
+  if (!props.message.id) return
+  await updateMessageState(props.message.id, newState)
+  showStateMenu.value = false
+}
+
+// Delete message
+const handleDelete = async () => {
+  if (!props.message.id) return
+  if (confirm('Are you sure you want to delete this message?')) {
+    await deleteMessage(props.message.id)
+  }
 }
 </script>
 
@@ -245,11 +280,51 @@ const toggleExpand = () => {
         </div>
 
         <!-- Actions -->
-        <div class="mt-4 pt-4 border-t border-base-300 flex gap-2 justify-end">
-          <button class="btn btn-sm btn-ghost">Copy ID</button>
-          <button class="btn btn-sm btn-ghost">Mark as Read</button>
-          <button class="btn btn-sm btn-primary">Change State</button>
-          <button class="btn btn-sm btn-error btn-outline">Delete</button>
+        <div class="mt-4 pt-4 border-t border-base-300 flex gap-2 justify-end flex-wrap">
+          <button class="btn btn-sm btn-ghost" @click="copyId">Copy ID</button>
+          <button
+            v-if="message.state === 'new'"
+            class="btn btn-sm btn-ghost"
+            @click="markAsRead"
+          >
+            Mark as Read
+          </button>
+
+          <!-- State change dropdown -->
+          <div class="dropdown dropdown-end">
+            <button tabindex="0" class="btn btn-sm btn-primary">Change State</button>
+            <ul
+              tabindex="0"
+              class="dropdown-content menu p-2 shadow-lg bg-base-200 rounded-box w-48 mt-2 z-10"
+            >
+              <li>
+                <a @click="changeState('new')">
+                  <component :is="stateIcons.new" class="h-4 w-4" :class="stateColors.new" />
+                  New
+                </a>
+              </li>
+              <li>
+                <a @click="changeState('acknowledged')">
+                  <component :is="stateIcons.acknowledged" class="h-4 w-4" :class="stateColors.acknowledged" />
+                  Acknowledged
+                </a>
+              </li>
+              <li>
+                <a @click="changeState('resolved')">
+                  <component :is="stateIcons.resolved" class="h-4 w-4" :class="stateColors.resolved" />
+                  Resolved
+                </a>
+              </li>
+              <li>
+                <a @click="changeState('archived')">
+                  <component :is="stateIcons.archived" class="h-4 w-4" :class="stateColors.archived" />
+                  Archived
+                </a>
+              </li>
+            </ul>
+          </div>
+
+          <button class="btn btn-sm btn-error btn-outline" @click="handleDelete">Delete</button>
         </div>
       </div>
     </div>

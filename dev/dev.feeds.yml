@@ -42,7 +42,7 @@ feeds:
       maxAgeDays: 30
 
   - name: "Development Testing"
-    slug: "dev-test"
+    id: "dev-test"
     keys:
       - 3ftyjSfiZott983g1rWykD # github
       - fcvgA8pwwmY3XZ1EAO4KX3 # discord

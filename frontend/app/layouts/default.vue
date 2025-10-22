@@ -6,17 +6,27 @@ import IconWeatherSunny from "~icons/mdi/weather-sunny";
 import IconWeatherNight from "~icons/mdi/weather-night";
 import IconCog from "~icons/mdi/cog";
 import IconViewDashboard from "~icons/mdi/view-dashboard";
+import IconLogout from "~icons/mdi/logout";
+import IconAccount from "~icons/mdi/account-circle";
 
 // State management
 const { theme, initTheme, toggleTheme } = useTheme();
-const { feeds } = useAppState();
+const { feeds, fetchFeeds } = useAppState();
+const { user, logout } = useAuth();
+
+// Handle logout
+const handleLogout = () => {
+  logout();
+  navigateTo('/auth/login');
+};
 
 // Sidebar state for mobile
 const isSidebarOpen = ref(false);
 
-// Initialize theme on mount
-onMounted(() => {
+// Initialize theme and fetch feeds on mount
+onMounted(async () => {
   initTheme();
+  await fetchFeeds();
 });
 
 // Close sidebar when navigating (mobile)
@@ -136,8 +146,17 @@ const toggleSidebar = () => {
             </div>
           </nav>
 
-          <!-- Bottom section: Settings -->
-          <div class="px-4 py-4 border-t border-base-300">
+          <!-- Bottom section: User & Settings -->
+          <div class="px-4 py-4 border-t border-base-300 space-y-2">
+            <!-- User info -->
+            <div v-if="user" class="flex items-center gap-3 px-4 py-2 text-sm">
+              <IconAccount class="h-5 w-5 text-base-content/60" />
+              <div class="flex-1 truncate">
+                <div class="font-medium truncate">{{ user.username }}</div>
+                <div class="text-xs text-base-content/60 truncate">{{ user.email }}</div>
+              </div>
+            </div>
+
             <NuxtLink
               to="/settings"
               class="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-base-300 transition-colors font-medium"
@@ -147,6 +166,14 @@ const toggleSidebar = () => {
               <IconCog class="h-5 w-5" />
               <span>Settings</span>
             </NuxtLink>
+
+            <button
+              class="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-base-300 transition-colors font-medium w-full text-left text-error"
+              @click="handleLogout"
+            >
+              <IconLogout class="h-5 w-5" />
+              <span>Logout</span>
+            </button>
           </div>
         </div>
       </aside>

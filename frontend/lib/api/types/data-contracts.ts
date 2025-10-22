@@ -26,11 +26,11 @@ export interface DtosFeedMessage {
   id?: string;
   logs?: string[];
   message?: string;
-  metadata?: number[];
+  metadata?: any;
   priority?: number;
   processedAt?: string;
-  rawHeaders?: number[];
-  rawRequest?: number[];
+  rawHeaders?: any;
+  rawRequest?: any;
   receivedAt?: string;
   state?: string;
   stateChangedAt?: string;
@@ -53,15 +53,15 @@ export interface DtosFeedMessageCreate {
   feedSlug: string;
   logs?: string[];
   message?: string;
-  metadata?: number[];
+  metadata?: any;
   /**
    * @min 1
    * @max 5
    */
   priority?: number;
   processedAt?: string;
-  rawHeaders: number[];
-  rawRequest: number[];
+  rawHeaders: any;
+  rawRequest: any;
   receivedAt?: string;
   state?: "new" | "acknowledged" | "resolved" | "archived";
   title?: string;
