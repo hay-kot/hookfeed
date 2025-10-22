@@ -18,13 +18,49 @@ permissions:
   packages: write
 
 jobs:
-  release:
+  backend-tests:
+    name: "Go Build/Test"
+    uses: ./.github/workflows/partial-tests.yml
+
+  tag:
+    name: "Create Release Tag"
     runs-on: ubuntu-latest
+    needs:
+      - backend-tests
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Get latest tag
+        id: get-latest-tag
+        uses: actions-ecosystem/action-get-latest-tag@v1
+
+      - name: Bump semver
+        id: bump-semver
+        uses: actions-ecosystem/action-bump-semver@v1
+        with:
+          current_version: ${{ steps.get-latest-tag.outputs.tag }}
+          level: ${{ inputs.version_bump }}
+
+      - name: Push tag
+        uses: actions-ecosystem/action-push-tag@v1
+        with:
+          tag: ${{ steps.bump-semver.outputs.new_version }}
+          message: "Release ${{ steps.bump-semver.outputs.new_version }}"
+
+  release:
+    name: "Build and Publish Release"
+    runs-on: ubuntu-latest
+    needs:
+      - tag
     steps:
       - name: Checkout
         uses: actions/checkout@v5
         with:
           fetch-depth: 0
+
+      - name: Fetch tags
+        run: git fetch --force --tags
 
       - name: Set up Go
         uses: actions/setup-go@v6
@@ -44,7 +80,8 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - uses: docker/login-action@v1
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v1
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
