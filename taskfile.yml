@@ -100,6 +100,17 @@ tasks:
     cmds:
       - go test {{ .CLI_ARGS }} ./...
 
+  build:
+    dir: backend
+    desc: Build local dev version for testing
+    cmds:
+      - goreleaser release --snapshot --clean --skip=publish
+    sources:
+      - "**/*.go"
+      - go.mod
+      - go.sum
+      - .goreleaser.yml
+
   db:sqlc:
     aliases: ["sqlc"]
     dir: backend
