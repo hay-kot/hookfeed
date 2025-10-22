@@ -42,6 +42,9 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Install Task
+        uses: go-task/setup-task@v1
+
       - name: Build Frontend UI
         run: task build:ui
 
