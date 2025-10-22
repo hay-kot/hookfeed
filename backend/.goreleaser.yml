@@ -4,7 +4,6 @@ before:
   hooks:
     - go mod tidy
     - go mod download
-    - bash -c 'cd ../frontend && bun install && bun run generate && rm -rf ../backend/internal/static/public/* && cp -r .output/public/* ../backend/internal/static/public/'
 
 builds:
   - id: hookfeed
