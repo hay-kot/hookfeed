@@ -30,4 +30,4 @@ node_modules/
 **/.vitepress/dist/
 backend/dist
 backend/internal/static/public/*
-!backend/internal/static/public/index.html
+!backend/internal/static/public/dev.html
