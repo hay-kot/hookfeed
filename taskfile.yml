@@ -5,6 +5,9 @@ version: "3"
 vars:
   GREETING: Hello, World!
 
+dotenv:
+  - .env
+
 tasks:
   swag:
     dir: backend/internal/web/docs/
@@ -182,3 +185,31 @@ tasks:
     desc: Send test ntfy messages with different priorities
     cmds:
       - ./dev/messages.sh {{ .CLI_ARGS }}
+
+  publish:
+    desc: "Publish a new release (usage: task publish -- patch|minor|major)"
+    dir: backend
+    deps:
+      - build:ui
+    vars:
+      BUMP_TYPE: '{{default "patch" .CLI_ARGS}}'
+      CURRENT_VERSION:
+        sh: git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0"
+      NEXT_VERSION:
+        sh: svu {{.BUMP_TYPE}}
+    cmds:
+      - echo "Current version:{{.CURRENT_VERSION}}"
+      - echo "Next version:{{.NEXT_VERSION}}"
+      - echo "Publishing {{.NEXT_VERSION}}..."
+      - git tag -a {{.NEXT_VERSION}} -m "Release {{.NEXT_VERSION}}"
+      - git push origin {{.NEXT_VERSION}}
+      - goreleaser release --clean
+    preconditions:
+      - sh: '[ -n "$GITHUB_TOKEN" ]'
+        msg: "GITHUB_TOKEN environment variable must be set. Create a .env file with GITHUB_TOKEN=your_token"
+      - sh: git diff --quiet
+        msg: "Working directory must be clean before publishing"
+      - sh: '[ "{{.CLI_ARGS}}" = "patch" ] || [ "{{.CLI_ARGS}}" = "minor" ] || [ "{{.CLI_ARGS}}" = "major" ]'
+        msg: 'Must specify version bump type: task publish -- patch|minor|major'
+      - sh: command -v svu >/dev/null 2>&1
+        msg: "svu is required. Install with: go install github.com/caarlos0/svu@latest"
