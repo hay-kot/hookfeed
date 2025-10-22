@@ -26,7 +26,6 @@ go get -u github.com/hay-kot/hookfeed
 - [ ] Display raw request
 - [ ] Rich message support
   - [ ] First class properties
-    - [ ] Job Duration
     - [ ] Tags
     - [ ] Log Lines
   - [ ] Send any JSON data to display as metadata

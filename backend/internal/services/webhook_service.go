@@ -81,7 +81,7 @@ func (w *WebhookService) ProcessWebhook(ctx context.Context, req dtos.WebhookReq
 	// Create the feed message
 	receivedAt := time.Now()
 	createMsg := dtos.FeedMessageCreate{
-		FeedID:   feed.ID,
+		FeedID:     feed.ID,
 		RawRequest: json.RawMessage(rawRequest),
 		RawHeaders: json.RawMessage(rawHeaders),
 		ReceivedAt: &receivedAt,

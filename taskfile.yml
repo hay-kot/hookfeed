@@ -56,12 +56,26 @@ tasks:
       - task: gen:code
 
   svc:
+    desc: Start postgres for development
+    cmds:
+      - docker compose up postgres-dev
+
+  svc:full:
+    desc: Start all services (postgres, mailpit, hookfeed)
     cmds:
       - docker compose up
 
   svc:clean:
+    desc: Stop all services and remove volumes
     cmds:
       - docker compose down -v
+
+  svc:build:
+    desc: Build the hookfeed docker image
+    deps:
+      - build
+    cmds:
+      - docker compose build hookfeed
 
   tidy:
     dir: backend
@@ -75,10 +89,10 @@ tasks:
       - golangci-lint run ./...
 
   fmt:
+    desc: Runs golangci-lint fmt on the backend
     dir: backend
-    desc: Runs go fmt on the backend
     cmds:
-      - go fmt ./...
+      - golangci-lint fmt
 
   run:
     dir: backend
@@ -100,9 +114,26 @@ tasks:
     cmds:
       - go test {{ .CLI_ARGS }} ./...
 
+  build:ui:
+    dir: frontend
+    desc: Build frontend UI
+    cmds:
+      - bun install
+      - bun run generate
+      - rm -rf ../backend/internal/static/public/*
+      - cp -r .output/public/* ../backend/internal/static/public/
+    sources:
+      - "**/*.vue"
+      - "**/*.ts"
+      - "**/*.js"
+      - package.json
+      - nuxt.config.ts
+
   build:
     dir: backend
     desc: Build local dev version for testing
+    deps:
+      - build:ui
     cmds:
       - goreleaser release --snapshot --clean --skip=publish
     sources:
@@ -110,6 +141,7 @@ tasks:
       - go.mod
       - go.sum
       - .goreleaser.yml
+      - internal/static/public/**
 
   db:sqlc:
     aliases: ["sqlc"]

@@ -3,6 +3,7 @@ package webapi
 import (
 	"context"
 	"errors"
+	"mime"
 	"net/http"
 	"time"
 
@@ -11,6 +12,7 @@ import (
 	"github.com/go-chi/cors"
 	"github.com/hay-kot/hookfeed/backend/internal/data/dtos"
 	"github.com/hay-kot/hookfeed/backend/internal/services"
+	"github.com/hay-kot/hookfeed/backend/internal/static"
 	"github.com/hay-kot/hookfeed/backend/internal/web/docs"
 	"github.com/hay-kot/hookfeed/backend/internal/web/mid"
 	"github.com/hay-kot/hookfeed/backend/internal/xapps/webapi/handlers"
@@ -41,12 +43,18 @@ type WebAPI struct {
 }
 
 func New(l zerolog.Logger, build string, cfg Config, services *services.Service) *WebAPI {
+	registerMimes()
 	return &WebAPI{
 		l:        l.With().Str("service", "web_api").Logger(),
 		cfg:      cfg,
 		build:    build,
 		services: services,
 	}
+}
+
+func registerMimes() {
+	_ = mime.AddExtensionType(".js", "application/javascript")
+	_ = mime.AddExtensionType(".mjs", "application/javascript")
 }
 
 func (ib *WebAPI) Start(ctx context.Context) error {
@@ -143,6 +151,11 @@ func (ib *WebAPI) routes() chi.Router {
 		r.HandleFunc("POST /api/v1/feeds/{feed-slug}/messages/bulk-delete", adapter.Adapt(feedmessageCtrl.BulkDelete))
 		// $scaffold_inject_routes
 	})
+
+	// Static file handler for frontend app
+	staticctrl := handlers.NewStaticController(static.PublicFS, "public")
+	mux.HandleFunc("/app", adapter.Adapt(staticctrl.HandleStatic))
+	mux.HandleFunc("/app/*", adapter.Adapt(staticctrl.HandleStatic))
 
 	return mux
 }

@@ -13,7 +13,6 @@ type Config struct {
 	Web        webapi.Config
 	Postgres   db.Config
 	ServiceCfg services.Config
-	FeedFile   string `json:"feed_file" conf:"default:configs/feeds.yml"`
 }
 
 var EnvPrefix = "HF_"

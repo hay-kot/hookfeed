@@ -1,3 +1,4 @@
 FROM gcr.io/distroless/static
-ENTRYPOINT ["/hookfeed-api"]
-COPY hookfeed-api /
+ARG TARGETPLATFORM
+COPY $TARGETPLATFORM/hookfeed /
+ENTRYPOINT ["/hookfeed", "serve"]

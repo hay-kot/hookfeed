@@ -3,22 +3,22 @@
  * Redirects unauthenticated users to login page
  */
 export default defineNuxtRouteMiddleware(async (to) => {
-  const { isAuthenticated, initAuth } = useAuth()
+  const { isAuthenticated, initAuth } = useAuth();
 
   // Initialize auth state if not already done
-  await initAuth()
+  await initAuth();
 
   // Allow access to auth pages without being logged in
-  if (to.path.startsWith('/auth/')) {
+  if (to.path.startsWith("/app/auth/")) {
     // If already authenticated, redirect to home
     if (isAuthenticated.value) {
-      return navigateTo('/')
+      return navigateTo("/");
     }
-    return
+    return;
   }
 
   // Require authentication for all other pages
   if (!isAuthenticated.value) {
-    return navigateTo('/auth/login')
+    return navigateTo("/auth/login");
   }
-})
+});

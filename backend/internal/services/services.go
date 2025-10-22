@@ -12,10 +12,10 @@ import (
 )
 
 type Config struct {
-	CompanyName string `json:"company_name" conf:"default:Gottl Inc."`
-	WebURL      string `json:"web_url"      conf:"default:http://localhost:8080"`
-	FeedFile    string `json:"feed_file"    conf:"default:"`
-	NtfyEnabled bool   `json:"ntfy_enabled" conf:"default:true"` // Enable ntfy-compatible endpoint
+	CompanyName string `json:"company_name" conf:"default:Gottl Inc."            env:"COMPANY_NAME"`
+	WebURL      string `json:"web_url"      conf:"default:http://localhost:8080" env:"WEB_URL"`
+	FeedFile    string `json:"feed_file"    conf:"default:configs/feeds.yml"     env:"FEED_FILE"`
+	NtfyEnabled bool   `json:"ntfy_enabled" conf:"default:true"                  env:"NTFY_ENABLED"` // Enable ntfy-compatible endpoint
 }
 
 // Service is a collection of all services in the application

@@ -4,11 +4,12 @@ before:
   hooks:
     - go mod tidy
     - go mod download
+    - bash -c 'cd ../frontend && bun install && bun run generate && rm -rf ../backend/internal/static/public/* && cp -r .output/public/* ../backend/internal/static/public/'
 
 builds:
-  - id: hookfeed-api
-    main: ./cmd/api
-    binary: hookfeed-api
+  - id: hookfeed
+    main: ./cmd/hookfeed
+    binary: hookfeed
     env:
       - CGO_ENABLED=0
     goos:
@@ -76,52 +77,19 @@ changelog:
     - title: Others
       order: 999
 
-dockers:
-  - use: buildx
-    goos: linux
-    goarch: amd64
-    image_templates:
-      - "ghcr.io/hay-kot/hookfeed:latest"
-      - "ghcr.io/hay-kot/hookfeed:{{ .Tag }}"
-      - "ghcr.io/hay-kot/hookfeed:v{{ .Major }}"
-    build_flag_templates:
-      - "--pull"
-      - "--label=org.opencontainers.image.created={{.Date}}"
-      - "--label=org.opencontainers.image.title={{.ProjectName}}"
-      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
-      - "--label=org.opencontainers.image.version={{.Version}}"
-    dockerfile: Dockerfile
-
-  - use: buildx
-    goos: linux
-    goarch: arm64
-    image_templates:
-      - "ghcr.io/hay-kot/hookfeed:latest"
-      - "ghcr.io/hay-kot/hookfeed:{{ .Tag }}"
-      - "ghcr.io/hay-kot/hookfeed:v{{ .Major }}"
-    build_flag_templates:
-      - "--pull"
-      - "--label=org.opencontainers.image.created={{.Date}}"
-      - "--label=org.opencontainers.image.title={{.ProjectName}}"
-      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
-      - "--label=org.opencontainers.image.version={{.Version}}"
-    dockerfile: Dockerfile
-
-  - use: buildx
-    goos: linux
-    goarch: arm
-    goarm: "7"
-    image_templates:
-      - "ghcr.io/hay-kot/hookfeed:latest"
-      - "ghcr.io/hay-kot/hookfeed:{{ .Tag }}"
-      - "ghcr.io/hay-kot/hookfeed:v{{ .Major }}"
-    build_flag_templates:
-      - "--pull"
-      - "--label=org.opencontainers.image.created={{.Date}}"
-      - "--label=org.opencontainers.image.title={{.ProjectName}}"
-      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
-      - "--label=org.opencontainers.image.version={{.Version}}"
-    dockerfile: Dockerfile
+dockers_v2:
+  - images:
+      - "ghcr.io/hay-kot/hookfeed"
+    tags:
+      - "latest"
+      - "{{ .Tag }}"
+      - "v{{ .Major }}"
+    labels:
+      "org.opencontainers.image.created": "{{.Date}}"
+      "org.opencontainers.image.title": "{{.ProjectName}}"
+      "org.opencontainers.image.revision": "{{.FullCommit}}"
+      "org.opencontainers.image.version": "{{.Version}}"
+      "org.opencontainers.image.source": "{{.GitURL}}"
 
 release:
   github:
