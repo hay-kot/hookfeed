@@ -207,7 +207,7 @@ tasks:
     preconditions:
       - sh: '[ -n "$GITHUB_TOKEN" ]'
         msg: "GITHUB_TOKEN environment variable must be set. Create a .env file with GITHUB_TOKEN=your_token"
-      - sh: 'git diff --quiet -- . ":!backend/internal/static/public/"'
+      - sh: 'git diff --quiet -- . ":!backend/internal/static/public/" && git diff --cached --quiet'
         msg: "Working directory must be clean before publishing (ignoring generated static files)"
       - sh: '[ "{{.CLI_ARGS}}" = "patch" ] || [ "{{.CLI_ARGS}}" = "minor" ] || [ "{{.CLI_ARGS}}" = "major" ]'
         msg: 'Must specify version bump type: task publish -- patch|minor|major'
