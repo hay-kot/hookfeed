@@ -28,3 +28,6 @@ bin/
 node_modules/
 **/.vitepress/cache/
 **/.vitepress/dist/
+backend/dist
+backend/internal/static/public/*
+!backend/internal/static/public/.gitkeep

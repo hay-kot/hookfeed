@@ -12,6 +12,12 @@ services:
       - "8861:5432"
     volumes:
       - "hf.dev.pg:/var/lib/postgresql/data"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   mailpit:
     image: axllent/mailpit
     restart: no
@@ -21,6 +27,35 @@ services:
     ports:
       - "8025:8025"
       - "1025:1025"
+
+  hookfeed:
+    image: ghcr.io/hay-kot/hookfeed:v0-arm64 # snapshot tag for local dev
+    restart: no
+    environment:
+      # Database configuration (HF_ prefix for cmd/hookfeed)
+      - "HF_POSTGRES_HOST=postgres-dev"
+      - "HF_POSTGRES_PORT=5432"
+      - "HF_POSTGRES_DATABASE=hookfeed"
+      - "HF_POSTGRES_USERNAME=postgres"
+      - "HF_POSTGRES_PASSWORD=postgres"
+      - "HF_POSTGRES_SSL_MODE=disable"
+      # Web server configuration
+      - "HF_WEB_HOST=0.0.0.0"
+      - "HF_WEB_PORT=9990"
+      - "HF_WEB_ALLOWED_ORIGINS=*"
+      # Service configuration
+      - "HF_FEED_FILE=/app/config/feeds.yml"
+      - "HF_NTFY_ENABLED=true"
+    ports:
+      - "9991:9990"
+    volumes:
+      # Mount the feed configuration
+      - ./dev/dev.feeds.yml:/app/config/feeds.yml:ro
+      # Mount middleware scripts
+      - ./dev/middleware:/app/middleware:ro
+    depends_on:
+      postgres-dev:
+        condition: service_healthy
 
 volumes:
   hf.dev.pg: {}

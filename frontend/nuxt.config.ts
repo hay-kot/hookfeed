@@ -15,6 +15,11 @@ export default defineNuxtConfig({
     plugins: [tailwindcss()],
   },
 
+  ssr: false,
+  app: {
+    baseURL: "/app/",
+  },
+
   nitro: {
     devProxy: {
       "/api": {

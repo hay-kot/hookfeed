@@ -4,11 +4,13 @@ linters:
   enable:
     - asciicheck
     - bodyclose
+    - copyloopvar
     - depguard
     - dogsled
     - errcheck
     - errorlint
     - exhaustive
+    - exhaustruct
     - gochecknoinits
     - goconst
     - gocritic
@@ -27,6 +29,8 @@ linters:
     - whitespace
     - zerologlint
   settings:
+    exhaustruct:
+      exclude: [".*"] # Exclude all structs, this still allows specific case opt-in via 2 '//exhaustruct:enforce'
     depguard:
       rules:
         main:
@@ -39,6 +43,14 @@ linters:
                 details.
             - pkg: github.com/pkg/errors
               desc: Should be replaced by standard lib errors package
+            - pkg: github.com/gofrs/uuid
+              desc: Use github.com/google/uuid instead, which we already depend on.
+            - pkg: github.com/bmizerany/assert
+              desc: Use github.com/stretchr/testify/assert instead, which we already depend on.
+            - pkg: github.com/jackc/pgx$
+              desc: Should use v5 of pgx package
+            - pkg: github.com/brianvoe/gofakeit
+              desc: Use github.com/go-faker/faker/v4 instead, which we already depend on.
     exhaustive:
       default-signifies-exhaustive: true
     goconst:
@@ -67,11 +79,17 @@ linters:
       - builtin$
       - examples$
 issues:
-  fix: true
+  fix: false
 formatters:
+  enable:
+    - gofumpt
   exclusions:
     generated: lax
     paths:
       - third_party$
       - builtin$
       - examples$
+  settings:
+    gofumpt:
+      module-path: gitea.kotel.app/hay-kot/recipinned/backend
+      extra-rules: false
