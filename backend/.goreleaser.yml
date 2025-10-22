@@ -91,7 +91,7 @@ dockers_v2:
       "org.opencontainers.image.source": "{{.GitURL}}"
     flags:
       - "--provenance=false"
-      - "--sbom=false"
+      - "--attest=type=sbom,disabled=true"
 
 release:
   github:
