@@ -71,16 +71,16 @@ func (t *Transformer) Transform(input []byte) ([]byte, error) {
 }
 
 // jsonToLuaTable converts a Go map to a Lua table
-func jsonToLuaTable(L *lua.LState, data map[string]interface{}) *lua.LTable {
-	table := L.NewTable()
+func jsonToLuaTable(l *lua.LState, data map[string]interface{}) *lua.LTable {
+	table := l.NewTable()
 	for key, value := range data {
-		table.RawSetString(key, goToLuaValue(L, value))
+		table.RawSetString(key, goToLuaValue(l, value))
 	}
 	return table
 }
 
 // goToLuaValue converts Go values to Lua values
-func goToLuaValue(L *lua.LState, value interface{}) lua.LValue {
+func goToLuaValue(l *lua.LState, value interface{}) lua.LValue {
 	switch v := value.(type) {
 	case nil:
 		return lua.LNil
@@ -91,11 +91,11 @@ func goToLuaValue(L *lua.LState, value interface{}) lua.LValue {
 	case string:
 		return lua.LString(v)
 	case map[string]interface{}:
-		return jsonToLuaTable(L, v)
+		return jsonToLuaTable(l, v)
 	case []interface{}:
-		arr := L.NewTable()
+		arr := l.NewTable()
 		for i, item := range v {
-			arr.RawSetInt(i+1, goToLuaValue(L, item))
+			arr.RawSetInt(i+1, goToLuaValue(l, item))
 		}
 		return arr
 	default:

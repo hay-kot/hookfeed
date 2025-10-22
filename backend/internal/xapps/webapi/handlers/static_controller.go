@@ -35,9 +35,7 @@ func (ctrl *StaticController) HandleStatic(w http.ResponseWriter, r *http.Reques
 
 	// Strip the /app prefix if present
 	urlPath := r.URL.Path
-	if strings.HasPrefix(urlPath, "/app") {
-		urlPath = strings.TrimPrefix(urlPath, "/app")
-	}
+	urlPath = strings.TrimPrefix(urlPath, "/app")
 
 	// If the path is empty or just "/", serve index.html
 	if urlPath == "" || urlPath == "/" {
@@ -64,9 +62,7 @@ func (ctrl *StaticController) serveFile(w http.ResponseWriter, r *http.Request, 
 	urlPath = path.Clean(urlPath)
 
 	// Remove leading slash
-	if strings.HasPrefix(urlPath, "/") {
-		urlPath = strings.TrimPrefix(urlPath, "/")
-	}
+	urlPath = strings.TrimPrefix(urlPath, "/")
 
 	// Construct the full path
 	fullPath := path.Join(ctrl.prefix, urlPath)
@@ -76,7 +72,7 @@ func (ctrl *StaticController) serveFile(w http.ResponseWriter, r *http.Request, 
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	// Get file info to check if it's a directory
 	stat, err := file.Stat()

@@ -125,62 +125,26 @@ func colorizeJSONLine(line string) string {
 
 		// Handle strings (keys and values)
 		if ch == '"' {
-			end := i + 1
-			for end < len(line) && line[end] != '"' {
-				if line[end] == '\\' {
-					end++ // Skip escaped character
-				}
-				end++
-			}
-			if end < len(line) {
-				end++ // Include closing quote
-				str := line[i:end]
-
-				// Check if this is a key (followed by colon after whitespace)
-				isKey := false
-				j := end
-				for j < len(line) && (line[j] == ' ' || line[j] == '\t') {
-					j++
-				}
-				if j < len(line) && line[j] == ':' {
-					isKey = true
-				}
-
-				if isKey {
-					result.WriteString(jsonKeyColor.Render(str))
-				} else {
-					result.WriteString(jsonStringColor.Render(str))
-				}
-				i = end
+			str, newI := colorizeJSONString(line, i)
+			if newI > i {
+				result.WriteString(str)
+				i = newI
 				continue
 			}
 		}
 
 		// Handle numbers
 		if (ch >= '0' && ch <= '9') || ch == '-' {
-			end := i + 1
-			for end < len(line) && ((line[end] >= '0' && line[end] <= '9') || line[end] == '.' || line[end] == 'e' || line[end] == 'E' || line[end] == '-' || line[end] == '+') {
-				end++
-			}
-			result.WriteString(jsonNumberColor.Render(line[i:end]))
-			i = end
+			num, newI := colorizeJSONNumber(line, i)
+			result.WriteString(num)
+			i = newI
 			continue
 		}
 
 		// Handle booleans and null
-		if strings.HasPrefix(line[i:], "true") {
-			result.WriteString(jsonBoolNullColor.Render("true"))
-			i += 4
-			continue
-		}
-		if strings.HasPrefix(line[i:], "false") {
-			result.WriteString(jsonBoolNullColor.Render("false"))
-			i += 5
-			continue
-		}
-		if strings.HasPrefix(line[i:], "null") {
-			result.WriteString(jsonBoolNullColor.Render("null"))
-			i += 4
+		if keyword, newI := colorizeJSONKeyword(line, i); newI > i {
+			result.WriteString(keyword)
+			i = newI
 			continue
 		}
 
@@ -190,4 +154,65 @@ func colorizeJSONLine(line string) string {
 	}
 
 	return result.String()
+}
+
+// colorizeJSONString handles colorizing a JSON string starting at position i
+func colorizeJSONString(line string, i int) (string, int) {
+	end := i + 1
+	for end < len(line) && line[end] != '"' {
+		if line[end] == '\\' {
+			end++ // Skip escaped character
+		}
+		end++
+	}
+	if end >= len(line) {
+		return "", i
+	}
+
+	end++ // Include closing quote
+	str := line[i:end]
+
+	// Check if this is a key (followed by colon after whitespace)
+	isKey := isJSONKey(line, end)
+
+	if isKey {
+		return jsonKeyColor.Render(str), end
+	}
+	return jsonStringColor.Render(str), end
+}
+
+// isJSONKey checks if a string is followed by a colon (making it a key)
+func isJSONKey(line string, pos int) bool {
+	for pos < len(line) && (line[pos] == ' ' || line[pos] == '\t') {
+		pos++
+	}
+	return pos < len(line) && line[pos] == ':'
+}
+
+// colorizeJSONNumber handles colorizing a JSON number starting at position i
+func colorizeJSONNumber(line string, i int) (string, int) {
+	end := i + 1
+	for end < len(line) && isNumberChar(line[end]) {
+		end++
+	}
+	return jsonNumberColor.Render(line[i:end]), end
+}
+
+// isNumberChar checks if a character is valid in a JSON number
+func isNumberChar(ch byte) bool {
+	return (ch >= '0' && ch <= '9') || ch == '.' || ch == 'e' || ch == 'E' || ch == '-' || ch == '+'
+}
+
+// colorizeJSONKeyword handles colorizing JSON keywords (true, false, null)
+func colorizeJSONKeyword(line string, i int) (string, int) {
+	if strings.HasPrefix(line[i:], "true") {
+		return jsonBoolNullColor.Render("true"), i + 4
+	}
+	if strings.HasPrefix(line[i:], "false") {
+		return jsonBoolNullColor.Render("false"), i + 5
+	}
+	if strings.HasPrefix(line[i:], "null") {
+		return jsonBoolNullColor.Render("null"), i + 4
+	}
+	return "", i
 }
