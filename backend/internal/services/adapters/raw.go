@@ -38,7 +38,7 @@ func (ra *RawAdapter) UnmarshalRequest(r *http.Request) error {
 	}
 
 	// If RawRequest is not provided, use the body as RawRequest
-	if ra.CreateDTO.RawRequest == nil || len(ra.CreateDTO.RawRequest) == 0 || string(ra.CreateDTO.RawRequest) == "null" {
+	if len(ra.CreateDTO.RawRequest) == 0 || string(ra.CreateDTO.RawRequest) == "null" {
 		if json.Valid(bodyBytes) {
 			ra.CreateDTO.RawRequest = json.RawMessage(bodyBytes)
 		} else {
@@ -49,7 +49,7 @@ func (ra *RawAdapter) UnmarshalRequest(r *http.Request) error {
 	}
 
 	// If RawHeaders is not provided, capture them
-	if ra.CreateDTO.RawHeaders == nil || len(ra.CreateDTO.RawHeaders) == 0 || string(ra.CreateDTO.RawHeaders) == "null" {
+	if len(ra.CreateDTO.RawHeaders) == 0 || string(ra.CreateDTO.RawHeaders) == "null" {
 		headersJSON, _ := json.Marshal(ra.RawHeaders)
 		ra.CreateDTO.RawHeaders = json.RawMessage(headersJSON)
 	}

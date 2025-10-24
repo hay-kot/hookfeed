@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestGetHeader(t *testing.T) {
@@ -146,9 +147,9 @@ func TestParsePriority(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			result, err := ParsePriority(tt.input)
 			if tt.wantErr {
-				assert.Error(t, err)
+				require.Error(t, err)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 			assert.Equal(t, tt.expected, result)
 		})
