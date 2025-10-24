@@ -1,3 +1,4 @@
+/* post-processed by ./scripts/process-types.go */
 /* eslint-disable */
 /* tslint:disable */
 // @ts-nocheck
@@ -10,116 +11,116 @@
  * ---------------------------------------------------------------
  */
 
-export interface DtosFeed {
-  adapters?: string[];
-  description?: string;
-  id?: string;
-  keys?: string[];
-  middleware?: string[];
-  name?: string;
-  retention?: DtosRetention;
+export interface Feed {
+  adapters: string[];
+  description: string;
+  id: string;
+  keys: string[];
+  middleware: string[];
+  name: string;
+  retention: Retention;
 }
 
-export interface DtosFeedMessage {
-  createdAt?: string;
-  feedSlug?: string;
-  id?: string;
-  logs?: string[];
-  message?: string;
-  metadata?: any;
-  priority?: number;
-  processedAt?: string;
-  rawHeaders?: any;
-  rawRequest?: any;
-  receivedAt?: string;
-  state?: string;
-  stateChangedAt?: string;
-  title?: string;
-  updatedAt?: string;
+export interface FeedMessage {
+  createdAt: Date | string;
+  feedSlug: string;
+  id: string;
+  logs: string[];
+  message: string;
+  metadata: any;
+  priority: number;
+  processedAt: string;
+  rawHeaders: any;
+  rawRequest: any;
+  receivedAt: string;
+  state: string;
+  stateChangedAt: string;
+  title: string;
+  updatedAt: Date | string;
 }
 
-export interface DtosFeedMessageBulkDelete {
-  filter?: DtosFeedMessageDeleteFilter;
-  messageIds?: string[];
+export interface FeedMessageBulkDelete {
+  filter: FeedMessageDeleteFilter;
+  messageIds: string[];
 }
 
-export interface DtosFeedMessageBulkUpdateState {
+export interface FeedMessageBulkUpdateState {
   /** @minItems 1 */
   messageIds: string[];
   state: "new" | "acknowledged" | "resolved" | "archived";
 }
 
-export interface DtosFeedMessageCreate {
+export interface FeedMessageCreate {
   feedSlug: string;
-  logs?: string[];
-  message?: string;
-  metadata?: any;
+  logs: string[];
+  message: string;
+  metadata: any;
   /**
    * @min 1
    * @max 5
    */
-  priority?: number;
-  processedAt?: string;
+  priority: number;
+  processedAt: string;
   rawHeaders: any;
   rawRequest: any;
-  receivedAt?: string;
-  state?: "new" | "acknowledged" | "resolved" | "archived";
-  title?: string;
+  receivedAt: string;
+  state: "new" | "acknowledged" | "resolved" | "archived";
+  title: string;
 }
 
-export interface DtosFeedMessageDeleteFilter {
-  olderThan?: string;
+export interface FeedMessageDeleteFilter {
+  olderThan: string;
   /**
    * @min 1
    * @max 5
    */
-  priority?: number;
+  priority: number;
 }
 
-export interface DtosFeedMessageUpdateState {
+export interface FeedMessageUpdateState {
   state: "new" | "acknowledged" | "resolved" | "archived";
 }
 
-export interface DtosPaginationResponseDtosFeedMessage {
-  items?: DtosFeedMessage[];
-  total?: number;
+export interface PaginationResponseDtosFeedMessage {
+  items: FeedMessage[];
+  total: number;
 }
 
-export interface DtosPasswordReset {
+export interface PasswordReset {
   /** @minLength 8 */
   password: string;
   token: string;
 }
 
-export interface DtosPasswordResetRequest {
+export interface PasswordResetRequest {
   email: string;
 }
 
-export interface DtosRetention {
-  maxAgeDays?: number;
-  maxCount?: number;
+export interface Retention {
+  maxAgeDays: number;
+  maxCount: number;
 }
 
-export interface DtosStatusResponse {
-  build?: string;
+export interface StatusResponse {
+  build: string;
 }
 
-export interface DtosUser {
-  createdAt?: string;
-  email?: string;
-  id?: string;
-  subscriptionEndedDate?: string;
-  subscriptionStartDate?: string;
-  updatedAt?: string;
-  username?: string;
+export interface User {
+  createdAt: Date | string;
+  email: string;
+  id: string;
+  subscriptionEndedDate: string;
+  subscriptionStartDate: string;
+  updatedAt: Date | string;
+  username: string;
 }
 
-export interface DtosUserAuthenticate {
+export interface UserAuthenticate {
   email: string;
   password: string;
 }
 
-export interface DtosUserRegister {
+export interface UserRegister {
   email: string;
   /**
    * @minLength 6
@@ -133,34 +134,34 @@ export interface DtosUserRegister {
   username: string;
 }
 
-export interface DtosUserSession {
-  expiresAt?: string;
-  token?: string;
+export interface UserSession {
+  expiresAt: string;
+  token: string;
 }
 
-export interface DtosUserUpdate {
-  email?: string;
+export interface UserUpdate {
+  email: string;
   /**
    * @minLength 6
    * @maxLength 256
    */
-  password?: string;
+  password: string;
   /**
    * @minLength 6
    * @maxLength 128
    */
-  username?: string;
+  username: string;
 }
 
-export interface DtosWebhookResponse {
-  feedId?: string;
-  messageId?: string;
-  success?: boolean;
+export interface WebhookResponse {
+  feedId: string;
+  messageId: string;
+  success: boolean;
 }
 
 export interface ServerErrorResp {
-  data?: any;
-  message?: string;
-  requestId?: string;
-  statusCode?: number;
+  data: any;
+  message: string;
+  requestId: string;
+  statusCode: number;
 }
