@@ -1,15 +1,11 @@
 package handlers
 
 import (
-	"encoding/json"
-	"io"
 	"net/http"
-	"strconv"
-	"strings"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/hay-kot/hookfeed/backend/internal/data/dtos"
 	"github.com/hay-kot/hookfeed/backend/internal/services"
+	"github.com/hay-kot/hookfeed/backend/internal/services/adapters"
 	"github.com/hay-kot/httpkit/server"
 	"github.com/rs/zerolog"
 )
@@ -28,31 +24,28 @@ func NewNtfyController(logger zerolog.Logger, feedMessageService *services.FeedM
 	}
 }
 
-// ntfyMessage represents a parsed ntfy-compatible message
-type ntfyMessage struct {
-	Topic    string            `json:"topic,omitempty"`
-	Message  string            `json:"message,omitempty"`
-	Title    string            `json:"title,omitempty"`
-	Priority int32             `json:"priority,omitempty"`
-	Tags     []string          `json:"tags,omitempty"`
-	Click    string            `json:"click,omitempty"`
-	Icon     string            `json:"icon,omitempty"`
-	Actions  []json.RawMessage `json:"actions,omitempty"`
-	Markdown bool              `json:"markdown,omitempty"`
-}
-
 // Publish godoc
 //
 //	@Tags			Ntfy
 //	@Summary		Publish ntfy-compatible notification
-//	@Description	Accepts ntfy-style POST/PUT requests for publishing notifications
+//	@Description	Accepts ntfy-style POST/PUT requests for publishing notifications. Supports ntfy headers (X-Title, X-Message, etc.), query parameters (title, message, priority, etc.), JSON body, and plain text body.
 //	@Accept			json,text/plain
 //	@Produce		json
 //	@Param			topic		path		string	true	"Topic/Feed name"
-//	@Param			X-Title		header		string	false	"Notification title"
-//	@Param			X-Priority	header		int		false	"Priority (1-5, default 3)"
-//	@Param			X-Tags		header		string	false	"Comma-separated tags"
-//	@Param			X-Message	header		string	false	"Message content"
+//	@Param			title		query		string	false	"Notification title (alias: t)"
+//	@Param			message		query		string	false	"Notification message (alias: m)"
+//	@Param			priority	query		int		false	"Priority 1-5, default 3 (alias: p)"
+//	@Param			tags		query		string	false	"Comma-separated tags (alias: ta)"
+//	@Param			click		query		string	false	"URL opened when notification is clicked"
+//	@Param			icon		query		string	false	"URL for custom notification icon"
+//	@Param			markdown	query		bool	false	"Enable Markdown rendering (alias: md)"
+//	@Param			X-Title		header		string	false	"Notification title (overrides query param)"
+//	@Param			X-Priority	header		int		false	"Priority (1-5, default 3, overrides query param)"
+//	@Param			X-Tags		header		string	false	"Comma-separated tags (overrides query param)"
+//	@Param			X-Message	header		string	false	"Message content (overrides query param)"
+//	@Param			X-Click		header		string	false	"Click URL (overrides query param)"
+//	@Param			X-Icon		header		string	false	"Icon URL (overrides query param)"
+//	@Param			X-Markdown	header		bool	false	"Enable Markdown (overrides query param)"
 //	@Param			body		body		string	false	"Message body (plain text or JSON)"
 //	@Success		200			{object}	dtos.FeedMessage
 //	@Router			/{topic} [POST]
@@ -68,30 +61,23 @@ func (nc *NtfyController) Publish(w http.ResponseWriter, r *http.Request) error 
 		Str("content_type", r.Header.Get("Content-Type")).
 		Msg("received ntfy message")
 
-	// Verify feed exists
-	if nc.feedService != nil {
-		cache := nc.feedService.GetCache()
-		if cache != nil {
-			ok, _ := cache.GetByKey(topic)
-			if !ok {
-				nc.logger.Warn().
-					Str("topic", topic).
-					Msg("feed not found for ntfy message")
-				return server.Error().
-					Status(http.StatusNotFound).
-					Msg("feed not found").
-					Write(r.Context(), w)
-			}
+		// Verify feed exists
+	cache := nc.feedService.GetCache()
+	if cache != nil {
+		ok, _ := cache.GetByKey(topic)
+		if !ok {
+			nc.logger.Warn().Str("topic", topic).Msg("feed not found for ntfy message")
+			return server.Error().
+				Status(http.StatusNotFound).
+				Msg("feed not found").
+				Write(r.Context(), w)
 		}
 	}
 
-	// Parse the ntfy message from headers and body
-	msg, err := nc.parseNtfyMessage(r, topic)
-	if err != nil {
-		nc.logger.Error().
-			Err(err).
-			Str("topic", topic).
-			Msg("failed to parse ntfy message")
+	// Use adapter to parse the request
+	adapter := &adapters.NtfyAdapter{}
+	if err := adapter.UnmarshalRequest(r); err != nil {
+		nc.logger.Error().Err(err).Str("topic", topic).Msg("failed to parse ntfy message")
 		return server.Error().
 			Status(http.StatusBadRequest).
 			Msg(err.Error()).
@@ -100,77 +86,16 @@ func (nc *NtfyController) Publish(w http.ResponseWriter, r *http.Request) error 
 
 	nc.logger.Info().
 		Str("topic", topic).
-		Str("title", msg.Title).
-		Int32("priority", msg.Priority).
-		Strs("tags", msg.Tags).
+		Str("title", adapter.Message.Title).
+		Int32("priority", adapter.Message.Priority).
+		Strs("tags", adapter.Message.Tags).
 		Msg("parsed ntfy message")
 
-	// Read raw request body
-	bodyBytes, err := io.ReadAll(r.Body)
-	if err != nil {
-		return err
-	}
-
-	// Ensure RawRequest is valid JSON
-	var rawRequestJSON json.RawMessage
-	if json.Valid(bodyBytes) {
-		// Body is already valid JSON
-		rawRequestJSON = json.RawMessage(bodyBytes)
-	} else {
-		// Body is plain text, wrap it in JSON
-		wrapped := map[string]string{"body": string(bodyBytes)}
-		rawRequestJSON, _ = json.Marshal(wrapped)
-	}
-
-	// Capture raw headers
-	headers := make(map[string]string)
-	for k, v := range r.Header {
-		if len(v) > 0 {
-			headers[k] = v[0]
-		}
-	}
-	headersJSON, _ := json.Marshal(headers)
-
-	// Build metadata from ntfy-specific fields
-	metadata := make(map[string]interface{})
-	if len(msg.Tags) > 0 {
-		metadata["tags"] = msg.Tags
-	}
-	if msg.Click != "" {
-		metadata["click"] = msg.Click
-	}
-	if msg.Icon != "" {
-		metadata["icon"] = msg.Icon
-	}
-	if len(msg.Actions) > 0 {
-		metadata["actions"] = msg.Actions
-	}
-	if msg.Markdown {
-		metadata["markdown"] = true
-	}
-	metadataJSON, _ := json.Marshal(metadata)
-
-	// Create feed message
-	title := msg.Title
-	message := msg.Message
-	priority := msg.Priority
-
-	createDTO := dtos.FeedMessageCreate{
-		FeedID:     topic,
-		RawRequest: rawRequestJSON,
-		RawHeaders: json.RawMessage(headersJSON),
-		Title:      &title,
-		Message:    &message,
-		Priority:   &priority,
-		Metadata:   json.RawMessage(metadataJSON),
-	}
-
+	// Convert to DTO and create feed message
+	createDTO := adapter.AsFeedMessage()
 	feedMessage, err := nc.feedMessageService.Create(r.Context(), createDTO)
 	if err != nil {
-		nc.logger.Error().
-			Err(err).
-			Str("topic", topic).
-			Msg("failed to create feed message from ntfy")
+		nc.logger.Error().Err(err).Str("topic", topic).Msg("failed to create feed message from ntfy")
 		return err
 	}
 
@@ -181,138 +106,4 @@ func (nc *NtfyController) Publish(w http.ResponseWriter, r *http.Request) error 
 		Msg("ntfy message saved successfully")
 
 	return server.JSON(w, http.StatusOK, feedMessage)
-}
-
-// parseNtfyMessage extracts ntfy message fields from headers and body
-func (nc *NtfyController) parseNtfyMessage(r *http.Request, topic string) (*ntfyMessage, error) {
-	msg := &ntfyMessage{
-		Topic:    topic,
-		Priority: 3, // default priority
-	}
-
-	// Try to parse as JSON first
-	if r.Header.Get("Content-Type") == "application/json" {
-		bodyBytes, err := io.ReadAll(r.Body)
-		if err != nil {
-			return nil, err
-		}
-		// Restore body for later reading
-		r.Body = io.NopCloser(strings.NewReader(string(bodyBytes)))
-
-		var jsonMsg ntfyMessage
-		if err := json.Unmarshal(bodyBytes, &jsonMsg); err == nil {
-			// JSON parsed successfully
-			if jsonMsg.Topic != "" {
-				msg.Topic = jsonMsg.Topic
-			}
-			if jsonMsg.Message != "" {
-				msg.Message = jsonMsg.Message
-			}
-			if jsonMsg.Title != "" {
-				msg.Title = jsonMsg.Title
-			}
-			if jsonMsg.Priority > 0 {
-				msg.Priority = jsonMsg.Priority
-			}
-			if len(jsonMsg.Tags) > 0 {
-				msg.Tags = jsonMsg.Tags
-			}
-			msg.Click = jsonMsg.Click
-			msg.Icon = jsonMsg.Icon
-			msg.Actions = jsonMsg.Actions
-			msg.Markdown = jsonMsg.Markdown
-		}
-	}
-
-	// Parse headers (headers override JSON if present)
-	if title := nc.getHeader(r, "X-Title", "Title"); title != "" {
-		msg.Title = title
-	}
-
-	if msgText := nc.getHeader(r, "X-Message", "Message"); msgText != "" {
-		msg.Message = msgText
-	}
-
-	if priorityStr := nc.getHeader(r, "X-Priority", "Priority"); priorityStr != "" {
-		if p, err := nc.parsePriority(priorityStr); err == nil {
-			msg.Priority = p
-		}
-	}
-
-	if tagsStr := nc.getHeader(r, "X-Tags", "Tags"); tagsStr != "" {
-		msg.Tags = strings.Split(tagsStr, ",")
-		// Trim whitespace from tags
-		for i := range msg.Tags {
-			msg.Tags[i] = strings.TrimSpace(msg.Tags[i])
-		}
-	}
-
-	if click := nc.getHeader(r, "X-Click", "Click"); click != "" {
-		msg.Click = click
-	}
-
-	if icon := nc.getHeader(r, "X-Icon", "Icon"); icon != "" {
-		msg.Icon = icon
-	}
-
-	if markdown := nc.getHeader(r, "X-Markdown", "Markdown"); markdown != "" {
-		msg.Markdown = markdown == "true" || markdown == "1" || markdown == "yes"
-	}
-
-	// If message is still empty, read from body as plain text
-	if msg.Message == "" {
-		bodyBytes, err := io.ReadAll(r.Body)
-		if err != nil {
-			return nil, err
-		}
-		// Restore body for later reading
-		r.Body = io.NopCloser(strings.NewReader(string(bodyBytes)))
-
-		msg.Message = string(bodyBytes)
-	}
-
-	return msg, nil
-}
-
-// getHeader retrieves a header value, trying multiple possible keys
-func (nc *NtfyController) getHeader(r *http.Request, keys ...string) string {
-	for _, key := range keys {
-		if val := r.Header.Get(key); val != "" {
-			return val
-		}
-	}
-	return ""
-}
-
-// parsePriority converts priority string to int32 (1-5)
-func (nc *NtfyController) parsePriority(s string) (int32, error) {
-	// Handle named priorities (ntfy compatibility)
-	switch strings.ToLower(s) {
-	case "min", "1":
-		return 1, nil
-	case "low", "2":
-		return 2, nil
-	case "default", "3", "":
-		return 3, nil
-	case "high", "4":
-		return 4, nil
-	case "max", "urgent", "5":
-		return 5, nil
-	}
-
-	// Try parsing as integer
-	p, err := strconv.ParseInt(s, 10, 32)
-	if err != nil {
-		return 3, err
-	}
-
-	// Clamp to valid range
-	if p < 1 {
-		p = 1
-	}
-	if p > 5 {
-		p = 5
-	}
-
-	return int32(p), nil
 }

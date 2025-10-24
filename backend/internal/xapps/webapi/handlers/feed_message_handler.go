@@ -5,6 +5,7 @@ import (
 
 	"github.com/hay-kot/hookfeed/backend/internal/data/dtos"
 	"github.com/hay-kot/hookfeed/backend/internal/services"
+	"github.com/hay-kot/hookfeed/backend/internal/services/adapters"
 	"github.com/hay-kot/hookfeed/backend/internal/web/extractors"
 	"github.com/hay-kot/httpkit/server"
 )
@@ -89,12 +90,18 @@ func (uc *FeedMessageController) Search(w http.ResponseWriter, r *http.Request) 
 //	@Router			/v1/feed-messages [POST]
 //	@Security		Bearer
 func (uc *FeedMessageController) Create(w http.ResponseWriter, r *http.Request) error {
-	body, err := extractors.Body[dtos.FeedMessageCreate](r)
-	if err != nil {
-		return err
+	// Use adapter to parse the request
+	adapter := &adapters.RawAdapter{}
+	if err := adapter.UnmarshalRequest(r); err != nil {
+		return server.Error().
+			Status(http.StatusBadRequest).
+			Msg(err.Error()).
+			Write(r.Context(), w)
 	}
 
-	entity, err := uc.service.Create(r.Context(), body)
+	// Convert to DTO and create feed message
+	createDTO := adapter.AsFeedMessage()
+	entity, err := uc.service.Create(r.Context(), createDTO)
 	if err != nil {
 		return err
 	}
