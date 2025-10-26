@@ -1,228 +1,327 @@
 <script setup lang="ts">
 // Icons
-import IconInbox from '~icons/mdi/inbox'
-import IconChevronLeft from '~icons/mdi/chevron-left'
-import IconDotsVertical from '~icons/mdi/dots-vertical'
-import IconRefresh from '~icons/mdi/refresh'
-import IconCopy from '~icons/mdi/content-copy'
+import IconInbox from "~icons/mdi/inbox";
+import IconRefresh from "~icons/mdi/refresh";
+import IconDelete from "~icons/mdi/delete";
+import IconCheckCircle from "~icons/mdi/check-circle";
 
 // Page metadata
 definePageMeta({
-  layout: 'default',
-  middleware: 'auth',
-})
+  layout: "default",
+  middleware: "auth",
+});
 
 // Get feed ID from route
-const route = useRoute()
-const feedId = computed(() => route.params.id as string)
+const route = useRoute();
+const feedId = computed(() => route.params.id as string);
 
 // State management
-const { getFeedById, fetchFeeds } = useAppState()
-const { messages, totalMessages, isLoadingMessages, fetchMessages } = useFeedMessages()
+const { getFeedById, fetchFeeds } = useAppState();
+const { messages, totalMessages, isLoadingMessages, fetchMessages } =
+  useFeedMessages();
+const { setBreadcrumbs, clearBreadcrumbs } = useBreadcrumbs();
 
 // Get current feed
-const currentFeed = computed(() => getFeedById(feedId.value))
+const currentFeed = computed(() => getFeedById(feedId.value));
 
-// Filters
-const selectedState = ref<string | undefined>(undefined)
-const searchQuery = ref<string>('')
+// Update breadcrumbs when feed changes
+watch(
+  currentFeed,
+  (feed) => {
+    if (feed) {
+      setBreadcrumbs([{ label: "All Feeds", to: "/" }, { label: feed.name }]);
+    }
+  },
+  { immediate: true },
+);
+
+// Clear breadcrumbs on unmount
+onUnmounted(() => {
+  clearBreadcrumbs();
+});
 
 // Computed: Today's messages count
 const todayMessagesCount = computed(() => {
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  return messages.value.filter(m => {
-    const receivedAt = m.receivedAt ? new Date(m.receivedAt) : null
-    return receivedAt && receivedAt >= today
-  }).length
-})
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return messages.value.filter((m) => {
+    const receivedAt = m.receivedAt ? new Date(m.receivedAt) : null;
+    return receivedAt && receivedAt >= today;
+  }).length;
+});
+
+// Computed: Separate new and seen messages
+const newMessages = computed(() =>
+  messages.value.filter((m) => m.state === "new"),
+);
+const seenMessages = computed(() =>
+  messages.value.filter((m) => m.state !== "new"),
+);
 
 // Fetch data on mount and when feedId changes
 onMounted(async () => {
-  await fetchFeeds()
+  await fetchFeeds();
 
   if (!currentFeed.value) {
     // Redirect to home if feed not found
-    navigateTo('/')
-    return
+    navigateTo("/");
+    return;
   }
 
   await fetchMessages({
     feedSlug: currentFeed.value.slug,
-  })
-})
+  });
+});
 
 // Watch feedId changes
 watch(feedId, async (newId) => {
-  const feed = getFeedById(newId)
+  const feed = getFeedById(newId);
   if (!feed) {
-    navigateTo('/')
-    return
+    navigateTo("/");
+    return;
   }
 
   await fetchMessages({
     feedSlug: feed.slug,
-    state: selectedState.value as any,
-    q: searchQuery.value || undefined,
-  })
-})
-
-// Watch filters and refetch messages
-watch([selectedState, searchQuery], async () => {
-  if (!currentFeed.value) return
-
-  await fetchMessages({
-    feedSlug: currentFeed.value.slug,
-    state: selectedState.value as any,
-    q: searchQuery.value || undefined,
-    skip: 0,
-  })
-})
+  });
+});
 
 // Refresh messages
 const refreshMessages = async () => {
-  if (!currentFeed.value) return
+  if (!currentFeed.value) return;
 
   await fetchMessages({
     feedSlug: currentFeed.value.slug,
-    state: selectedState.value as any,
-    q: searchQuery.value || undefined,
     skip: 0,
-  })
-}
+  });
+};
 
-// Copy webhook URL
-const copyWebhookUrl = async () => {
-  if (!currentFeed.value) return
-  const url = `${window.location.origin}/hooks/${currentFeed.value.slug}`
+// Bulk delete messages by state
+const bulkDeleteByState = async (
+  state: "new" | "acknowledged" | "resolved" | "archived" | "all",
+) => {
+  if (!currentFeed.value) return;
+
+  const confirmMessage =
+    state === "all"
+      ? `Delete all messages in ${currentFeed.value.name}?`
+      : `Delete all "${state}" messages in ${currentFeed.value.name}?`;
+
+  if (!confirm(confirmMessage)) return;
+
   try {
-    await navigator.clipboard.writeText(url)
-    // Could add a toast notification here
+    const { apiClient } = useApiClient();
+
+    // Fetch all message IDs for the given state
+    const stateParam = state === "all" ? "" : `&state=${state}`;
+    const response = await apiClient.get<{ items: any[]; total: number }>(
+      `/feed-messages?feedSlug=${currentFeed.value.slug}${stateParam}&limit=10000`,
+    );
+
+    if (response.data.items.length === 0) {
+      alert("No messages to delete");
+      return;
+    }
+
+    const messageIds = response.data.items.map((m) => m.id);
+
+    // Bulk delete
+    await apiClient.post(
+      `/feeds/${currentFeed.value.slug}/messages/bulk-delete`,
+      {
+        messageIds,
+      },
+    );
+
+    // Refresh messages
+    await refreshMessages();
   } catch (err) {
-    console.error('Failed to copy:', err)
+    console.error("Failed to delete messages:", err);
+    alert("Failed to delete messages");
   }
-}
+};
+
+// Bulk update message states
+const bulkUpdateState = async (
+  fromState: "new" | "acknowledged" | "resolved" | "archived" | "all",
+  toState: "new" | "acknowledged" | "resolved" | "archived",
+) => {
+  if (!currentFeed.value) return;
+
+  const fromLabel =
+    fromState === "all" ? "all messages" : `all "${fromState}" messages`;
+  if (!confirm(`Mark ${fromLabel} as "${toState}"?`)) return;
+
+  try {
+    const { apiClient } = useApiClient();
+
+    // Fetch all message IDs for the given state
+    const stateParam = fromState === "all" ? "" : `&state=${fromState}`;
+    const response = await apiClient.get<{ items: any[]; total: number }>(
+      `/feed-messages?feedSlug=${currentFeed.value.slug}${stateParam}&limit=10000`,
+    );
+
+    if (response.data.items.length === 0) {
+      alert("No messages to update");
+      return;
+    }
+
+    const messageIds = response.data.items.map((m) => m.id);
+
+    // Bulk update state
+    await apiClient.post(
+      `/feeds/${currentFeed.value.slug}/messages/bulk-state`,
+      {
+        messageIds,
+        state: toState,
+      },
+    );
+
+    // Refresh messages
+    await refreshMessages();
+  } catch (err) {
+    console.error("Failed to update messages:", err);
+    alert("Failed to update messages");
+  }
+};
 </script>
 
 <template>
-  <div v-if="currentFeed" class="space-y-4">
-    <!-- Compact Header -->
-    <div class="flex items-center justify-between gap-4">
-      <!-- Left side: Back button + Title -->
-      <div class="flex items-center gap-3 min-w-0 flex-1">
-        <NuxtLink
-          to="/"
-          class="btn btn-ghost btn-sm btn-circle flex-shrink-0"
-          title="Back to All Feeds"
-        >
-          <IconChevronLeft class="h-5 w-5" />
-        </NuxtLink>
-        <div class="min-w-0 flex-1">
-          <div class="flex items-center gap-2">
-            <h1 class="text-2xl font-bold tracking-tight truncate">
-              {{ currentFeed.name }}
-            </h1>
-            <span
-              v-if="currentFeed.unreadCount > 0"
-              class="badge badge-primary badge-sm flex-shrink-0"
-            >
-              {{ currentFeed.unreadCount }}
-            </span>
-          </div>
-          <p class="text-sm text-base-content/60 truncate">
-            {{ currentFeed.description }}
-          </p>
-        </div>
-      </div>
-
-      <!-- Right side: Stats + Actions -->
-      <div class="flex items-center gap-3 flex-shrink-0">
-        <!-- Compact inline stats -->
-        <div class="hidden md:flex items-center gap-4 text-sm">
-          <div class="text-center">
-            <div class="font-bold text-lg text-primary">{{ totalMessages }}</div>
-            <div class="text-xs text-base-content/60">Total</div>
-          </div>
-          <div class="text-center">
-            <div class="font-bold text-lg">{{ todayMessagesCount }}</div>
-            <div class="text-xs text-base-content/60">Today</div>
-          </div>
-        </div>
-
-        <!-- Feed actions dropdown -->
-        <div class="dropdown dropdown-end">
-          <button tabindex="0" class="btn btn-ghost btn-sm btn-circle">
-            <IconDotsVertical class="h-5 w-5" />
-          </button>
-          <ul tabindex="0" class="dropdown-content menu p-2 shadow-lg bg-base-200 rounded-box w-52 mt-2 z-10">
-            <li><a>Mark all as read</a></li>
-            <li><a>Export messages</a></li>
-            <li><a>Feed settings</a></li>
-            <li class="border-t border-base-300 mt-1 pt-1">
-              <a class="text-error">Delete feed</a>
-            </li>
-          </ul>
-        </div>
-      </div>
-    </div>
-
-    <!-- Filters and Webhook URL combined -->
-    <div class="bg-base-200 p-3 rounded-lg space-y-2">
-      <!-- Filters row -->
-      <div class="flex flex-wrap gap-2 items-center justify-between">
-        <div class="flex flex-wrap gap-2 flex-1">
-          <input
-            v-model="searchQuery"
-            type="text"
-            placeholder="Search messages..."
-            class="input input-bordered input-sm flex-1 min-w-[150px]"
-          >
-
-          <select v-model="selectedState" class="select select-bordered select-sm">
-            <option :value="undefined">
-              All States
-            </option>
-            <option value="new">
-              New
-            </option>
-            <option value="acknowledged">
-              Acknowledged
-            </option>
-            <option value="resolved">
-              Resolved
-            </option>
-            <option value="archived">
-              Archived
-            </option>
-          </select>
-
-          <span class="badge badge-ghost self-center">
-            {{ messages.length }} messages
+  <div v-if="currentFeed" class="space-y-6">
+    <!-- Header Section -->
+    <div class="space-y-2">
+      <div class="flex items-center justify-between gap-3">
+        <div class="flex items-center gap-3">
+          <h1 class="text-3xl font-bold tracking-tight">
+            {{ currentFeed.name }}
+          </h1>
+          <span v-if="currentFeed.unreadCount > 0" class="badge badge-primary">
+            {{ currentFeed.unreadCount }} unread
           </span>
         </div>
 
-        <button
-          class="btn btn-sm btn-primary gap-1"
-          @click="refreshMessages"
-          :disabled="isLoadingMessages"
-        >
-          <IconRefresh class="h-4 w-4" :class="{ 'animate-spin': isLoadingMessages }" />
-          <span class="hidden sm:inline">Refresh</span>
-        </button>
+        <!-- Action Icons -->
+        <div class="flex gap-1">
+          <button
+            class="btn btn-ghost btn-sm btn-square"
+            :disabled="isLoadingMessages"
+            title="Refresh messages"
+            @click="refreshMessages"
+          >
+            <IconRefresh
+              class="h-5 w-5"
+              :class="{ 'animate-spin': isLoadingMessages }"
+            />
+          </button>
+
+          <!-- Mark as dropdown -->
+          <div class="dropdown dropdown-end">
+            <button
+              tabindex="0"
+              class="btn btn-ghost btn-sm btn-square"
+              title="Mark messages"
+            >
+              <IconCheckCircle class="h-5 w-5" />
+            </button>
+            <ul
+              tabindex="0"
+              class="dropdown-content menu p-2 shadow-lg bg-base-200 rounded-box w-64 mt-2 z-10"
+            >
+              <li class="menu-title"><span>Mark new as:</span></li>
+              <li>
+                <a @click="bulkUpdateState('new', 'acknowledged')"
+                  >Acknowledged</a
+                >
+              </li>
+              <li>
+                <a @click="bulkUpdateState('new', 'resolved')">Resolved</a>
+              </li>
+              <li>
+                <a @click="bulkUpdateState('new', 'archived')">Archived</a>
+              </li>
+
+              <li class="menu-title"><span>Mark acknowledged as:</span></li>
+              <li>
+                <a @click="bulkUpdateState('acknowledged', 'resolved')"
+                  >Resolved</a
+                >
+              </li>
+              <li>
+                <a @click="bulkUpdateState('acknowledged', 'archived')"
+                  >Archived</a
+                >
+              </li>
+
+              <li class="menu-title"><span>Mark resolved as:</span></li>
+              <li>
+                <a @click="bulkUpdateState('resolved', 'archived')">Archived</a>
+              </li>
+
+              <li class="border-t border-base-300 mt-1 pt-1">
+                <a
+                  class="font-semibold"
+                  @click="bulkUpdateState('all', 'archived')"
+                  >Archive all</a
+                >
+              </li>
+            </ul>
+          </div>
+
+          <!-- Delete dropdown -->
+          <div class="dropdown dropdown-end">
+            <button
+              tabindex="0"
+              class="btn btn-ghost btn-sm btn-square"
+              title="Delete messages"
+            >
+              <IconDelete class="h-5 w-5" />
+            </button>
+            <ul
+              tabindex="0"
+              class="dropdown-content menu p-2 shadow-lg bg-base-200 rounded-box w-56 mt-2 z-10"
+            >
+              <li><a @click="bulkDeleteByState('new')">Delete all new</a></li>
+              <li>
+                <a @click="bulkDeleteByState('acknowledged')"
+                  >Delete all acknowledged</a
+                >
+              </li>
+              <li>
+                <a @click="bulkDeleteByState('resolved')"
+                  >Delete all resolved</a
+                >
+              </li>
+              <li>
+                <a @click="bulkDeleteByState('archived')"
+                  >Delete all archived</a
+                >
+              </li>
+              <li class="border-t border-base-300 mt-1 pt-1">
+                <a
+                  class="text-error font-semibold"
+                  @click="bulkDeleteByState('all')"
+                  >Delete all</a
+                >
+              </li>
+            </ul>
+          </div>
+        </div>
       </div>
 
-      <!-- Webhook URL row -->
-      <div class="flex items-center gap-2 text-xs">
-        <code class="flex-1 text-base-content/60 truncate">
-          https://hookfeed.example.com/hooks/{{ currentFeed.slug }}
-        </code>
-        <button
-          class="btn btn-xs btn-ghost gap-1 flex-shrink-0"
-          @click="copyWebhookUrl"
-        >
-          <IconCopy class="h-3 w-3" />
-          Copy
-        </button>
+      <p class="text-base-content/60">
+        {{ currentFeed.description }}
+      </p>
+
+      <!-- Stats Row -->
+      <div class="flex items-center gap-4 text-sm">
+        <div class="flex items-center gap-1.5">
+          <span class="font-semibold text-primary">{{ totalMessages }}</span>
+          <span class="text-base-content/60">total messages</span>
+        </div>
+        <div class="flex items-center gap-1.5">
+          <span class="font-semibold">{{ todayMessagesCount }}</span>
+          <span class="text-base-content/60">today</span>
+        </div>
       </div>
     </div>
 
@@ -233,7 +332,7 @@ const copyWebhookUrl = async () => {
         v-if="isLoadingMessages"
         class="flex flex-col items-center justify-center py-16 px-4 bg-base-200 rounded-lg"
       >
-        <span class="loading loading-spinner loading-lg"></span>
+        <span class="loading loading-spinner loading-lg" />
         <p class="text-base-content/60 mt-4">Loading messages...</p>
       </div>
 
@@ -247,17 +346,40 @@ const copyWebhookUrl = async () => {
           No Messages in {{ currentFeed.name }}
         </h3>
         <p class="text-base-content/60 text-center max-w-md">
-          Messages sent to this feed will appear here. Use the webhook URL above to send messages.
+          Messages sent to this feed will appear here. Use the webhook URL above
+          to send messages.
         </p>
       </div>
 
       <!-- Message Cards -->
-      <MessageCard
-        v-else
-        v-for="message in messages"
-        :key="message.id"
-        :message="message"
-      />
+      <template v-else>
+        <!-- New Messages -->
+        <MessageCard
+          v-for="message in newMessages"
+          :key="message.id"
+          :message="message"
+        />
+
+        <!-- Separator (only show if there are both new and seen messages) -->
+        <div
+          v-if="newMessages.length > 0 && seenMessages.length > 0"
+          class="flex items-center gap-4 py-4"
+        >
+          <div class="flex-1 border-t border-base-300" />
+          <span
+            class="text-sm font-medium text-base-content/50 uppercase tracking-wide"
+            >Seen</span
+          >
+          <div class="flex-1 border-t border-base-300" />
+        </div>
+
+        <!-- Seen Messages -->
+        <MessageCard
+          v-for="message in seenMessages"
+          :key="message.id"
+          :message="message"
+        />
+      </template>
     </div>
   </div>
 </template>

@@ -913,17 +913,14 @@
                         "type": "string"
                     }
                 },
+                "category": {
+                    "type": "string"
+                },
                 "description": {
                     "type": "string"
                 },
                 "id": {
                     "type": "string"
-                },
-                "keys": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
                 },
                 "middleware": {
                     "type": "array",

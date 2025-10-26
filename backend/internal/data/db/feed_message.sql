@@ -108,21 +108,19 @@ SET
 WHERE
     id = ANY($1::uuid[]);
 
--- name: FeedMessageBulkDelete :one
+-- name: FeedMessageBulkDelete :execrows
 DELETE FROM
     feed_messages
 WHERE
-    id = ANY(sqlc.arg('message_ids')::uuid[])
-RETURNING COUNT(*);
+    id = ANY(sqlc.arg('message_ids')::uuid[]);
 
--- name: FeedMessageBulkDeleteByFilter :one
+-- name: FeedMessageBulkDeleteByFilter :execrows
 DELETE FROM
     feed_messages
 WHERE
     feed_slug = $1
     AND (sqlc.narg('priority')::integer IS NULL OR priority = sqlc.narg('priority'))
-    AND (sqlc.narg('older_than')::timestamp IS NULL OR received_at < sqlc.narg('older_than'))
-RETURNING COUNT(*);
+    AND (sqlc.narg('older_than')::timestamp IS NULL OR received_at < sqlc.narg('older_than'));
 
 -- name: FeedMessageSearch :many
 SELECT

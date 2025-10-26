@@ -10,6 +10,7 @@ export interface Feed {
   name: string
   slug: string
   description: string
+  category?: string
   unreadCount: number
 }
 
@@ -31,6 +32,7 @@ export const useAppState = () => {
         name: dto.name || '',
         slug: dto.id || '', // Backend uses ID as slug
         description: dto.description || '',
+        category: dto.category,
         unreadCount: 0, // Will be calculated separately
       }))
     } catch (error) {

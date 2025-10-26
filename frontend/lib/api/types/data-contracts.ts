@@ -13,9 +13,9 @@
 
 export interface Feed {
   adapters: string[];
+  category: string;
   description: string;
   id: string;
-  keys: string[];
   middleware: string[];
   name: string;
   retention: Retention;

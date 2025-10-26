@@ -4,9 +4,9 @@
  */
 
 import type { FeedMessage } from "~~/lib/api/types/data-contracts";
-import IconCircle from "~icons/mdi/circle";
-import IconCircleOutline from "~icons/mdi/circle-outline";
-import IconCheck from "~icons/mdi/check";
+import IconBell from "~icons/mdi/bell";
+import IconEyeCheck from "~icons/mdi/eye-check";
+import IconCheckCircle from "~icons/mdi/check-circle";
 import IconArchive from "~icons/mdi/archive";
 import IconClock from "~icons/mdi/clock";
 import IconChevronDown from "~icons/mdi/chevron-down";
@@ -43,9 +43,9 @@ const priorityLabels = {
 
 // State icons
 const stateIcons = {
-  new: IconCircle,
-  acknowledged: IconCircleOutline,
-  resolved: IconCheck,
+  new: IconBell,
+  acknowledged: IconEyeCheck,
+  resolved: IconCheckCircle,
   archived: IconArchive,
 };
 
@@ -55,6 +55,14 @@ const stateColors = {
   acknowledged: "text-info",
   resolved: "text-success",
   archived: "text-base-content/40",
+};
+
+// State border colors
+const stateBorderColors = {
+  new: "border-l-primary",
+  acknowledged: "border-l-info",
+  resolved: "border-l-success",
+  archived: "border-l-base-content/40",
 };
 
 // Expanded state for card details
@@ -131,7 +139,8 @@ const handleDelete = async () => {
 
 <template>
   <div
-    class="card bg-base-200 shadow-sm border border-base-300 hover:shadow-md transition-shadow"
+    class="card bg-base-200 shadow-sm border border-base-300 hover:shadow-md transition-shadow border-l-8"
+    :class="stateBorderColors[message.state as keyof typeof stateBorderColors]"
   >
     <!-- Card Header - Always visible -->
     <div class="card-body p-4">
@@ -140,7 +149,7 @@ const handleDelete = async () => {
         <div class="flex-shrink-0 pt-1">
           <component
             :is="
-              stateIcons[message.state as keyof typeof stateIcons] || IconCircle
+              stateIcons[message.state as keyof typeof stateIcons] || IconBell
             "
             class="h-5 w-5"
             :class="stateColors[message.state as keyof typeof stateColors]"

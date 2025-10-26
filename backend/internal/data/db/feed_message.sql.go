@@ -13,29 +13,28 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const feedMessageBulkDelete = `-- name: FeedMessageBulkDelete :one
+const feedMessageBulkDelete = `-- name: FeedMessageBulkDelete :execrows
 DELETE FROM
     feed_messages
 WHERE
     id = ANY($1::uuid[])
-RETURNING COUNT(*)
 `
 
 func (q *Queries) FeedMessageBulkDelete(ctx context.Context, messageIds []uuid.UUID) (int64, error) {
-	row := q.db.QueryRow(ctx, feedMessageBulkDelete, messageIds)
-	var count int64
-	err := row.Scan(&count)
-	return count, err
+	result, err := q.db.Exec(ctx, feedMessageBulkDelete, messageIds)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
-const feedMessageBulkDeleteByFilter = `-- name: FeedMessageBulkDeleteByFilter :one
+const feedMessageBulkDeleteByFilter = `-- name: FeedMessageBulkDeleteByFilter :execrows
 DELETE FROM
     feed_messages
 WHERE
     feed_slug = $1
     AND ($2::integer IS NULL OR priority = $2)
     AND ($3::timestamp IS NULL OR received_at < $3)
-RETURNING COUNT(*)
 `
 
 type FeedMessageBulkDeleteByFilterParams struct {
@@ -45,10 +44,11 @@ type FeedMessageBulkDeleteByFilterParams struct {
 }
 
 func (q *Queries) FeedMessageBulkDeleteByFilter(ctx context.Context, arg FeedMessageBulkDeleteByFilterParams) (int64, error) {
-	row := q.db.QueryRow(ctx, feedMessageBulkDeleteByFilter, arg.FeedSlug, arg.Priority, arg.OlderThan)
-	var count int64
-	err := row.Scan(&count)
-	return count, err
+	result, err := q.db.Exec(ctx, feedMessageBulkDeleteByFilter, arg.FeedSlug, arg.Priority, arg.OlderThan)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const feedMessageBulkUpdateState = `-- name: FeedMessageBulkUpdateState :exec

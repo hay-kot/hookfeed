@@ -46,6 +46,7 @@ func (f *FeedService) GetAllFeeds() []dtos.Feed {
 	return utils.Map(parsed, func(f feeds.FeedParsed) dtos.Feed {
 		return dtos.Feed{
 			Name:        f.Name,
+			Category:    f.Category,
 			ID:          f.ID,
 			Keys:        f.Keys,
 			Description: f.Description,

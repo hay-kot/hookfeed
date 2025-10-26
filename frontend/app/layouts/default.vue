@@ -13,6 +13,34 @@ import IconAccount from "~icons/mdi/account-circle";
 const { theme, initTheme, toggleTheme } = useTheme();
 const { feeds, fetchFeeds } = useAppState();
 const { user, logout } = useAuth();
+const { breadcrumbs } = useBreadcrumbs();
+
+// Group feeds by category
+const feedsByCategory = computed(() => {
+  const grouped: Record<string, typeof feeds.value> = {};
+
+  feeds.value.forEach(feed => {
+    const category = feed.category && feed.category.trim() !== '' ? feed.category : 'Feeds';
+    if (!grouped[category]) {
+      grouped[category] = [];
+    }
+    grouped[category].push(feed);
+  });
+
+  return grouped;
+});
+
+// Get sorted category names (with "Feeds" first if it exists)
+const sortedCategories = computed(() => {
+  const categories = Object.keys(feedsByCategory.value).sort();
+  // Move "Feeds" to the front if it exists
+  const feedsIndex = categories.indexOf('Feeds');
+  if (feedsIndex > -1) {
+    categories.splice(feedsIndex, 1);
+    categories.unshift('Feeds');
+  }
+  return categories;
+});
 
 // Handle logout
 const handleLogout = () => {
@@ -44,10 +72,10 @@ const toggleSidebar = () => {
   <div class="h-screen w-screen flex flex-col overflow-hidden bg-base-100">
     <!-- Top Bar -->
     <header
-      class="navbar bg-base-200 border-b border-base-300 px-4 h-16 flex-shrink-0 z-40"
+      class="bg-base-200 border-b border-base-300 h-16 flex-shrink-0 z-40 flex items-center"
     >
       <!-- Mobile menu button -->
-      <div class="flex-none lg:hidden">
+      <div class="flex-none lg:hidden px-4">
         <button
           class="btn btn-ghost btn-circle"
           aria-label="Toggle menu"
@@ -58,8 +86,8 @@ const toggleSidebar = () => {
         </button>
       </div>
 
-      <!-- Logo/Title -->
-      <div class="flex-1">
+      <!-- Logo/Title (in sidebar space on desktop) -->
+      <div class="flex-none w-64 h-full hidden lg:flex items-center px-4 border-r border-base-300">
         <NuxtLink
           to="/"
           class="text-xl font-bold tracking-tight hover:text-primary transition-colors"
@@ -68,8 +96,36 @@ const toggleSidebar = () => {
         </NuxtLink>
       </div>
 
+      <!-- Mobile Logo -->
+      <div class="flex-1 px-4 lg:hidden">
+        <NuxtLink
+          to="/"
+          class="text-xl font-bold tracking-tight hover:text-primary transition-colors"
+        >
+          HookFeed
+        </NuxtLink>
+      </div>
+
+      <!-- Breadcrumbs (after sidebar on desktop) -->
+      <div class="hidden lg:flex flex-1 px-4">
+        <nav v-if="breadcrumbs.length > 0" class="text-sm breadcrumbs">
+          <ul>
+            <li v-for="(crumb, index) in breadcrumbs" :key="index">
+              <NuxtLink
+                v-if="crumb.to"
+                :to="crumb.to"
+                class="text-base-content/60 hover:text-base-content"
+              >
+                {{ crumb.label }}
+              </NuxtLink>
+              <span v-else class="font-medium">{{ crumb.label }}</span>
+            </li>
+          </ul>
+        </nav>
+      </div>
+
       <!-- Right side actions -->
-      <div class="flex-none gap-2">
+      <div class="flex-none gap-2 px-4">
         <!-- Theme toggle -->
         <button
           class="btn btn-ghost btn-circle"
@@ -112,18 +168,18 @@ const toggleSidebar = () => {
               </NuxtLink>
             </div>
 
-            <!-- Feeds Section -->
-            <div class="space-y-2">
+            <!-- Feeds Sections by Category -->
+            <div v-for="category in sortedCategories" :key="category" class="space-y-2">
               <h2
                 class="px-4 text-xs font-semibold uppercase tracking-wider text-base-content/60"
               >
-                Feeds
+                {{ category }}
               </h2>
 
               <!-- Feed List -->
               <div class="space-y-1">
                 <NuxtLink
-                  v-for="feed in feeds"
+                  v-for="feed in feedsByCategory[category]"
                   :key="feed.id"
                   :to="`/feeds/${feed.id}`"
                   class="flex items-center justify-between px-4 py-2.5 rounded-lg hover:bg-base-300 transition-colors group"

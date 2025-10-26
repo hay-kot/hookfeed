@@ -15,6 +15,7 @@ type Config struct {
 // Feed represents a webhook feed configuration
 type Feed struct {
 	Name            string     `yaml:"name"`
+	Category        string     `yaml:"category"`
 	ID              string     `yaml:"id"`   // used as the unique identifier
 	Keys            []string   `yaml:"keys"` // used as the :key value in url path to resolve feed
 	Description     string     `yaml:"description"`
@@ -27,6 +28,7 @@ type Feed struct {
 func (f Feed) IntoParsed() FeedParsed {
 	fp := FeedParsed{
 		Name:            f.Name,
+		Category:        f.Category,
 		ID:              f.ID,
 		Keys:            f.Keys,
 		Description:     f.Description,
@@ -60,6 +62,7 @@ func (f Feed) IntoParsed() FeedParsed {
 // where none were assigned in the base type
 type FeedParsed struct {
 	Name            string          `yaml:"name"`
+	Category        string          `yaml:"category"`
 	ID              string          `yaml:"id"`   // used as the unique identifier
 	Keys            []string        `yaml:"keys"` // used as the :key value in url path to resolve feed
 	Description     string          `yaml:"description"`
