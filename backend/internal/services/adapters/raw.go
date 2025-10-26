@@ -52,13 +52,13 @@ func (ra *RawAdapter) UnmarshalRequest(r *http.Request) error {
 		var bodyData any
 		if isEmpty(ra.CreateDTO.RawRequest) {
 			if json.Valid(bodyBytes) {
-				json.Unmarshal(bodyBytes, &bodyData)
+				_ = json.Unmarshal(bodyBytes, &bodyData)
 			} else {
 				bodyData = map[string]string{"body": string(bodyBytes)}
 			}
 		} else {
 			// Use existing RawRequest
-			json.Unmarshal(ra.CreateDTO.RawRequest, &bodyData)
+			_ = json.Unmarshal(ra.CreateDTO.RawRequest, &bodyData)
 		}
 
 		// Convert headers to http.Header format
@@ -69,7 +69,7 @@ func (ra *RawAdapter) UnmarshalRequest(r *http.Request) error {
 			}
 		} else {
 			// Keep existing headers
-			json.Unmarshal(ra.CreateDTO.RawHeaders, &headers)
+			_ = json.Unmarshal(ra.CreateDTO.RawHeaders, &headers)
 		}
 
 		// Get query params
@@ -78,7 +78,7 @@ func (ra *RawAdapter) UnmarshalRequest(r *http.Request) error {
 			queryParams = r.URL.Query()
 		} else {
 			// Keep existing query params
-			json.Unmarshal(ra.CreateDTO.RawQueryParams, &queryParams)
+			_ = json.Unmarshal(ra.CreateDTO.RawQueryParams, &queryParams)
 		}
 
 		// Use constructor to ensure proper initialization

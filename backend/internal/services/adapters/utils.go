@@ -13,6 +13,8 @@ import (
 	"github.com/hay-kot/hookfeed/backend/internal/data/dtos"
 )
 
+const redactedValue = "<redacted>"
+
 // GetHeader retrieves a header value, trying multiple possible keys
 func GetHeader(r *http.Request, keys ...string) string {
 	for _, key := range keys {
@@ -90,21 +92,21 @@ func sanitizeSecrets(key, value string) string {
 		// Handle Bearer, Basic, and other auth schemes
 		parts := strings.SplitN(value, " ", 2)
 		if len(parts) == 2 {
-			return parts[0] + " <redacted>"
+			return parts[0] + " " + redactedValue
 		}
-		return "<redacted>"
+		return redactedValue
 
 	case "cookie", "set-cookie":
-		return "<redacted>"
+		return redactedValue
 
 	case "x-api-key", "x-auth-token", "api-key", "apikey":
-		return "<redacted>"
+		return redactedValue
 	}
 
 	// Redact query parameters that commonly contain secrets
 	if keyLower == "token" || keyLower == "api_key" || keyLower == "apikey" ||
 		keyLower == "secret" || keyLower == "password" || keyLower == "key" {
-		return "<redacted>"
+		return redactedValue
 	}
 
 	return value
@@ -181,7 +183,7 @@ func copyBody(r *http.Request) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to read request body: %w", err)
 	}
-	defer r.Body.Close()
+	_ = r.Body.Close()
 
 	r.Body = io.NopCloser(bytes.NewReader(body))
 
@@ -204,20 +206,4 @@ func copyBody(r *http.Request) ([]byte, error) {
 	}
 
 	return json.Marshal(wrapped)
-}
-
-// isEmptyJSON checks if the given JSON byte slice represents an empty value
-// Returns true for: '{}', ”, 'null', '[]', or whitespace-only strings
-func isEmptyJSON(data []byte) bool {
-	// Trim whitespace
-	trimmed := bytes.TrimSpace(data)
-
-	// Check for empty string
-	if len(trimmed) == 0 {
-		return true
-	}
-
-	// Check for common empty JSON representations
-	s := string(trimmed)
-	return s == "{}" || s == "null" || s == "[]"
 }
