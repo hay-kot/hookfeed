@@ -11,6 +11,9 @@ import IconArchive from "~icons/mdi/archive";
 import IconClock from "~icons/mdi/clock";
 import IconChevronDown from "~icons/mdi/chevron-down";
 import IconChevronUp from "~icons/mdi/chevron-up";
+import IconContentCopy from "~icons/mdi/content-copy";
+import IconSwapHorizontal from "~icons/mdi/swap-horizontal";
+import IconDelete from "~icons/mdi/delete";
 
 interface Props {
   message: FeedMessage;
@@ -343,21 +346,30 @@ const handleDelete = async () => {
             <div
               class="mt-4 pt-4 border-t border-base-300 flex gap-2 justify-end flex-wrap"
             >
-              <button class="btn btn-sm btn-ghost" @click="copyId">
-                Copy ID
+              <button
+                class="btn btn-sm btn-ghost btn-circle"
+                aria-label="Copy ID"
+                @click="copyId"
+              >
+                <IconContentCopy class="h-5 w-5" />
               </button>
               <button
                 v-if="message.state === 'new'"
-                class="btn btn-sm btn-ghost"
+                class="btn btn-sm btn-ghost btn-circle"
+                aria-label="Mark as Read"
                 @click="markAsRead"
               >
-                Mark as Read
+                <IconEyeCheck class="h-5 w-5" />
               </button>
 
               <!-- State change dropdown -->
               <div class="dropdown dropdown-end">
-                <button tabindex="0" class="btn btn-sm btn-primary">
-                  Change State
+                <button
+                  tabindex="0"
+                  class="btn btn-sm btn-primary btn-circle"
+                  aria-label="Change State"
+                >
+                  <IconSwapHorizontal class="h-5 w-5" />
                 </button>
                 <ul
                   tabindex="0"
@@ -407,10 +419,11 @@ const handleDelete = async () => {
               </div>
 
               <button
-                class="btn btn-sm btn-error btn-outline"
+                class="btn btn-sm btn-error btn-circle"
+                aria-label="Delete"
                 @click="handleDelete"
               >
-                Delete
+                <IconDelete class="h-5 w-5" />
               </button>
             </div>
           </div>
