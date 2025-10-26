@@ -165,17 +165,18 @@ func (s *FeedMessageService) Create(ctx context.Context, data dtos.FeedMessageCr
 	}
 
 	row, err := s.db.FeedMessageCreate(ctx, db.FeedMessageCreateParams{
-		FeedSlug:    data.FeedID,
-		RawRequest:  []byte(data.RawRequest),
-		RawHeaders:  []byte(data.RawHeaders),
-		Title:       data.Title,
-		Message:     data.Message,
-		Priority:    &priority,
-		Logs:        data.Logs,
-		Metadata:    []byte(data.Metadata),
-		State:       &state,
-		ReceivedAt:  receivedAt,
-		ProcessedAt: timePtrToPgTimestamp(data.ProcessedAt),
+		FeedSlug:       data.FeedID,
+		RawRequest:     []byte(data.RawRequest),
+		RawHeaders:     []byte(data.RawHeaders),
+		RawQueryParams: []byte(data.RawQueryParams),
+		Title:          data.Title,
+		Message:        data.Message,
+		Priority:       &priority,
+		Logs:           data.Logs,
+		Metadata:       []byte(data.Metadata),
+		State:          &state,
+		ReceivedAt:     receivedAt,
+		ProcessedAt:    timePtrToPgTimestamp(data.ProcessedAt),
 	})
 	if err != nil {
 		return dtos.FeedMessage{}, err

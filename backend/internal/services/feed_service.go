@@ -20,6 +20,26 @@ func NewFeedService(cache *feeds.Cache) *FeedService {
 	}
 }
 
+func (f *FeedService) GetByKey(key string) (dtos.Feed, bool) {
+	ok, feed := f.cache.GetByKey(key)
+	if !ok {
+		return dtos.Feed{}, false
+	}
+
+	return dtos.Feed{
+		Name:        feed.Name,
+		ID:          feed.ID,
+		Keys:        feed.Keys,
+		Description: feed.Description,
+		Middleware:  feed.Middleware,
+		Adapters:    feed.Adapters,
+		Retention: dtos.Retention{
+			MaxCount:   feed.Retention.MaxCount,
+			MaxAgeDays: feed.Retention.MaxAgeDays,
+		},
+	}, true
+}
+
 func (f *FeedService) GetAllFeeds() []dtos.Feed {
 	parsed := f.cache.GetAll()
 

@@ -5,9 +5,10 @@ import (
 )
 
 type WebhookRequest struct {
-	FeedKey string              // Feed key from URL path
-	Headers map[string][]string // All request headers
-	Body    map[string]any      // Raw JSON body
+	FeedKey     string              // Feed key from URL path
+	Headers     map[string][]string // All request headers
+	QueryParams map[string][]string // URL query parameters
+	Body        map[string]any      // Raw JSON body
 }
 
 // WebhookResponse represents the response sent back to the webhook sender

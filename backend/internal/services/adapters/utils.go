@@ -1,10 +1,16 @@
 package adapters
 
 import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
+
+	"github.com/hay-kot/hookfeed/backend/internal/data/dtos"
 )
 
 // GetHeader retrieves a header value, trying multiple possible keys
@@ -78,4 +84,144 @@ func SplitAndTrim(s string) []string {
 		result[i] = strings.TrimSpace(part)
 	}
 	return result
+}
+
+// sanitizeSecrets is middleware for copyAndTransformValues that redacts sensitive values
+func sanitizeSecrets(key, value string) string {
+	keyLower := strings.ToLower(key)
+
+	// Redact common authentication headers
+	switch keyLower {
+	case "authorization", "proxy-authorization":
+		// Handle Bearer, Basic, and other auth schemes
+		parts := strings.SplitN(value, " ", 2)
+		if len(parts) == 2 {
+			return parts[0] + " <redacted>"
+		}
+		return "<redacted>"
+
+	case "cookie", "set-cookie":
+		return "<redacted>"
+
+	case "x-api-key", "x-auth-token", "api-key", "apikey":
+		return "<redacted>"
+	}
+
+	// Redact query parameters that commonly contain secrets
+	if keyLower == "token" || keyLower == "api_key" || keyLower == "apikey" ||
+	   keyLower == "secret" || keyLower == "password" || keyLower == "key" {
+		return "<redacted>"
+	}
+
+	return value
+}
+
+// copyHTTPInto copies all HTTP request data (headers, query params, body) into the FeedMessageCreate
+func copyHTTPInto(val dtos.FeedMessageCreate, r *http.Request) (dtos.FeedMessageCreate, error) {
+	rawBody, err := copyBody(r)
+	if err != nil {
+		return dtos.FeedMessageCreate{}, err
+	}
+
+	rawHeaders, err := copyAndTransformValues(r.Header, sanitizeSecrets)
+	if err != nil {
+		return dtos.FeedMessageCreate{}, err
+	}
+
+	rawQueryParams, err := copyAndTransformValues(r.URL.Query(), sanitizeSecrets)
+	if err != nil {
+		return dtos.FeedMessageCreate{}, err
+	}
+
+	val.RawRequest = rawBody
+	val.RawHeaders = rawHeaders
+	val.RawQueryParams = rawQueryParams
+
+	return val, nil
+}
+
+// copyAndTransformValues extracts HTTP key/value pairs (headers, query params, etc.) and returns them as JSON.
+// Single-value arrays are unwrapped to strings, multi-value arrays remain as arrays.
+// Keys with empty values are omitted. Optional middleware functions can transform/sanitize values.
+func copyAndTransformValues(raw map[string][]string, mw ...func(key, value string) string) ([]byte, error) {
+	if len(raw) == 0 {
+		return []byte("{}"), nil
+	}
+
+	execmw := func(key, value string) string {
+		for _, fn := range mw {
+			value = fn(key, value)
+		}
+
+		return value
+	}
+
+	result := make(map[string]any)
+	for k, v := range raw {
+		switch {
+		case len(v) == 1:
+			result[k] = execmw(k, v[0])
+		case len(v) > 1:
+			lst := make([]string, len(v))
+			for i, vv := range v {
+				lst[i] = execmw(k, vv)
+			}
+
+			result[k] = lst
+		default:
+			// nop
+		}
+	}
+
+	return json.Marshal(result)
+}
+
+// copyBody extracts the body from the request and returns it as JSON.
+// The body is buffered so it can be read again by the caller.
+// If the body is valid JSON, it's returned as-is.
+// If the body is raw text (not valid JSON), it's wrapped in {"$body": "text content"}.
+func copyBody(r *http.Request) ([]byte, error) {
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read request body: %w", err)
+	}
+	defer r.Body.Close()
+
+	r.Body = io.NopCloser(bytes.NewReader(body))
+
+	// If body is completely empty, return empty JSON object
+	trimmed := bytes.TrimSpace(body)
+	if len(trimmed) == 0 {
+		return []byte("{}"), nil
+	}
+
+	// Check if the body is valid JSON
+	var js json.RawMessage
+	if err := json.Unmarshal(body, &js); err == nil {
+		// Body is valid JSON, return as-is
+		return body, nil
+	}
+
+	// Body is not valid JSON, wrap it in a JSON object with "$body" key
+	wrapped := map[string]string{
+		"$body": string(body),
+	}
+
+	return json.Marshal(wrapped)
+}
+
+// isEmptyJSON checks if the given JSON byte slice represents an empty value
+// Returns true for: '{}', ”, 'null', '[]', or whitespace-only strings
+func isEmptyJSON(data []byte) bool {
+	// Trim whitespace
+	trimmed := bytes.TrimSpace(data)
+
+	// Check for empty string
+	if len(trimmed) == 0 {
+		return true
+	}
+
+	// Check for common empty JSON representations
+	s := string(trimmed)
+	return s == "{}" || s == "null" || s == "[]"
 }

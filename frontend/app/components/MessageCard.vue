@@ -23,6 +23,7 @@ const { updateMessageState, deleteMessage } = useFeedMessages()
 const metadata = computed(() => props.message.metadata)
 const rawRequest = computed(() => props.message.rawRequest)
 const rawHeaders = computed(() => props.message.rawHeaders)
+const rawQueryParams = computed(() => props.message.rawQueryParams)
 
 // Level colors
 const levelColors = {
@@ -51,7 +52,7 @@ const stateColors = {
 
 // Expanded state for card details
 const isExpanded = ref(false)
-const activeTab = ref<'metadata' | 'request' | 'headers' | 'logs'>('metadata')
+const activeTab = ref<'metadata' | 'request' | 'headers' | 'queryParams' | 'logs'>('metadata')
 
 // Format timestamp
 const formatTimestamp = (timestamp?: string) => {
@@ -205,6 +206,14 @@ const handleDelete = async () => {
           <button
             role="tab"
             class="tab"
+            :class="{ 'tab-active': activeTab === 'queryParams' }"
+            @click="activeTab = 'queryParams'"
+          >
+            Query Params
+          </button>
+          <button
+            role="tab"
+            class="tab"
             :class="{ 'tab-active': activeTab === 'logs' }"
             @click="activeTab = 'logs'"
           >
@@ -238,6 +247,14 @@ const handleDelete = async () => {
             <JsonViewer v-if="rawHeaders" :data="rawHeaders" />
             <div v-else class="text-center text-base-content/40 py-8">
               No headers available
+            </div>
+          </div>
+
+          <!-- Query Params Tab -->
+          <div v-if="activeTab === 'queryParams'">
+            <JsonViewer v-if="rawQueryParams" :data="rawQueryParams" />
+            <div v-else class="text-center text-base-content/40 py-8">
+              No query parameters available
             </div>
           </div>
 

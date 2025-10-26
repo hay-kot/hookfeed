@@ -72,7 +72,7 @@ func (q *Queries) FeedMessageBulkUpdateState(ctx context.Context, arg FeedMessag
 
 const feedMessageByID = `-- name: FeedMessageByID :one
 SELECT
-    feed_messages_view.id, feed_messages_view.feed_slug, feed_messages_view.raw_request, feed_messages_view.raw_headers, feed_messages_view.title, feed_messages_view.message, feed_messages_view.priority, feed_messages_view.logs, feed_messages_view.metadata, feed_messages_view.state, feed_messages_view.state_changed_at, feed_messages_view.received_at, feed_messages_view.processed_at, feed_messages_view.created_at, feed_messages_view.updated_at
+    feed_messages_view.id, feed_messages_view.feed_slug, feed_messages_view.raw_request, feed_messages_view.raw_headers, feed_messages_view.raw_query_params, feed_messages_view.title, feed_messages_view.message, feed_messages_view.priority, feed_messages_view.logs, feed_messages_view.metadata, feed_messages_view.state, feed_messages_view.state_changed_at, feed_messages_view.received_at, feed_messages_view.processed_at, feed_messages_view.created_at, feed_messages_view.updated_at
 FROM
     feed_messages_view
 WHERE
@@ -91,6 +91,7 @@ func (q *Queries) FeedMessageByID(ctx context.Context, id uuid.UUID) (FeedMessag
 		&i.FeedMessagesView.FeedSlug,
 		&i.FeedMessagesView.RawRequest,
 		&i.FeedMessagesView.RawHeaders,
+		&i.FeedMessagesView.RawQueryParams,
 		&i.FeedMessagesView.Title,
 		&i.FeedMessagesView.Message,
 		&i.FeedMessagesView.Priority,
@@ -111,6 +112,7 @@ INSERT INTO feed_messages (
     feed_slug,
     raw_request,
     raw_headers,
+    raw_query_params,
     title,
     message,
     priority,
@@ -120,22 +122,23 @@ INSERT INTO feed_messages (
     received_at,
     processed_at
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
-) RETURNING id, feed_slug, raw_request, raw_headers, title, message, priority, logs, metadata, state, state_changed_at, received_at, processed_at, created_at, updated_at
+    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12
+) RETURNING id, feed_slug, raw_request, raw_headers, raw_query_params, title, message, priority, logs, metadata, state, state_changed_at, received_at, processed_at, created_at, updated_at
 `
 
 type FeedMessageCreateParams struct {
-	FeedSlug    string
-	RawRequest  []byte
-	RawHeaders  []byte
-	Title       *string
-	Message     *string
-	Priority    *int32
-	Logs        []string
-	Metadata    []byte
-	State       *string
-	ReceivedAt  time.Time
-	ProcessedAt pgtype.Timestamp
+	FeedSlug       string
+	RawRequest     []byte
+	RawHeaders     []byte
+	RawQueryParams []byte
+	Title          *string
+	Message        *string
+	Priority       *int32
+	Logs           []string
+	Metadata       []byte
+	State          *string
+	ReceivedAt     time.Time
+	ProcessedAt    pgtype.Timestamp
 }
 
 type FeedMessageCreateRow struct {
@@ -143,6 +146,7 @@ type FeedMessageCreateRow struct {
 	FeedSlug       string
 	RawRequest     []byte
 	RawHeaders     []byte
+	RawQueryParams []byte
 	Title          *string
 	Message        *string
 	Priority       *int32
@@ -161,6 +165,7 @@ func (q *Queries) FeedMessageCreate(ctx context.Context, arg FeedMessageCreatePa
 		arg.FeedSlug,
 		arg.RawRequest,
 		arg.RawHeaders,
+		arg.RawQueryParams,
 		arg.Title,
 		arg.Message,
 		arg.Priority,
@@ -176,6 +181,7 @@ func (q *Queries) FeedMessageCreate(ctx context.Context, arg FeedMessageCreatePa
 		&i.FeedSlug,
 		&i.RawRequest,
 		&i.RawHeaders,
+		&i.RawQueryParams,
 		&i.Title,
 		&i.Message,
 		&i.Priority,
@@ -244,7 +250,7 @@ func (q *Queries) FeedMessageDeleteOldByCount(ctx context.Context, arg FeedMessa
 
 const feedMessageGetAll = `-- name: FeedMessageGetAll :many
 SELECT
-    feed_messages_view.id, feed_messages_view.feed_slug, feed_messages_view.raw_request, feed_messages_view.raw_headers, feed_messages_view.title, feed_messages_view.message, feed_messages_view.priority, feed_messages_view.logs, feed_messages_view.metadata, feed_messages_view.state, feed_messages_view.state_changed_at, feed_messages_view.received_at, feed_messages_view.processed_at, feed_messages_view.created_at, feed_messages_view.updated_at
+    feed_messages_view.id, feed_messages_view.feed_slug, feed_messages_view.raw_request, feed_messages_view.raw_headers, feed_messages_view.raw_query_params, feed_messages_view.title, feed_messages_view.message, feed_messages_view.priority, feed_messages_view.logs, feed_messages_view.metadata, feed_messages_view.state, feed_messages_view.state_changed_at, feed_messages_view.received_at, feed_messages_view.processed_at, feed_messages_view.created_at, feed_messages_view.updated_at
 FROM
     feed_messages_view
 ORDER BY
@@ -293,6 +299,7 @@ func (q *Queries) FeedMessageGetAll(ctx context.Context, arg FeedMessageGetAllPa
 			&i.FeedMessagesView.FeedSlug,
 			&i.FeedMessagesView.RawRequest,
 			&i.FeedMessagesView.RawHeaders,
+			&i.FeedMessagesView.RawQueryParams,
 			&i.FeedMessagesView.Title,
 			&i.FeedMessagesView.Message,
 			&i.FeedMessagesView.Priority,
@@ -331,7 +338,7 @@ func (q *Queries) FeedMessageGetAllCount(ctx context.Context) (int64, error) {
 
 const feedMessageSearch = `-- name: FeedMessageSearch :many
 SELECT
-    v.id, v.feed_slug, v.raw_request, v.raw_headers, v.title, v.message, v.priority, v.logs, v.metadata, v.state, v.state_changed_at, v.received_at, v.processed_at, v.created_at, v.updated_at
+    v.id, v.feed_slug, v.raw_request, v.raw_headers, v.raw_query_params, v.title, v.message, v.priority, v.logs, v.metadata, v.state, v.state_changed_at, v.received_at, v.processed_at, v.created_at, v.updated_at
 FROM
     feed_messages_view v
     INNER JOIN feed_messages fm ON v.id = fm.id
@@ -387,6 +394,7 @@ func (q *Queries) FeedMessageSearch(ctx context.Context, arg FeedMessageSearchPa
 			&i.FeedMessagesView.FeedSlug,
 			&i.FeedMessagesView.RawRequest,
 			&i.FeedMessagesView.RawHeaders,
+			&i.FeedMessagesView.RawQueryParams,
 			&i.FeedMessagesView.Title,
 			&i.FeedMessagesView.Message,
 			&i.FeedMessagesView.Priority,
@@ -454,7 +462,7 @@ SET
     state_changed_at = CURRENT_TIMESTAMP
 WHERE
     id = $1
-RETURNING id, feed_slug, raw_request, raw_headers, title, message, priority, logs, metadata, state, state_changed_at, received_at, processed_at, created_at, updated_at
+RETURNING id, feed_slug, raw_request, raw_headers, raw_query_params, title, message, priority, logs, metadata, state, state_changed_at, received_at, processed_at, created_at, updated_at
 `
 
 type FeedMessageUpdateStateParams struct {
@@ -467,6 +475,7 @@ type FeedMessageUpdateStateRow struct {
 	FeedSlug       string
 	RawRequest     []byte
 	RawHeaders     []byte
+	RawQueryParams []byte
 	Title          *string
 	Message        *string
 	Priority       *int32
@@ -488,6 +497,7 @@ func (q *Queries) FeedMessageUpdateState(ctx context.Context, arg FeedMessageUpd
 		&i.FeedSlug,
 		&i.RawRequest,
 		&i.RawHeaders,
+		&i.RawQueryParams,
 		&i.Title,
 		&i.Message,
 		&i.Priority,
@@ -505,7 +515,7 @@ func (q *Queries) FeedMessageUpdateState(ctx context.Context, arg FeedMessageUpd
 
 const feedMessagesByFeedSlug = `-- name: FeedMessagesByFeedSlug :many
 SELECT
-    feed_messages_view.id, feed_messages_view.feed_slug, feed_messages_view.raw_request, feed_messages_view.raw_headers, feed_messages_view.title, feed_messages_view.message, feed_messages_view.priority, feed_messages_view.logs, feed_messages_view.metadata, feed_messages_view.state, feed_messages_view.state_changed_at, feed_messages_view.received_at, feed_messages_view.processed_at, feed_messages_view.created_at, feed_messages_view.updated_at
+    feed_messages_view.id, feed_messages_view.feed_slug, feed_messages_view.raw_request, feed_messages_view.raw_headers, feed_messages_view.raw_query_params, feed_messages_view.title, feed_messages_view.message, feed_messages_view.priority, feed_messages_view.logs, feed_messages_view.metadata, feed_messages_view.state, feed_messages_view.state_changed_at, feed_messages_view.received_at, feed_messages_view.processed_at, feed_messages_view.created_at, feed_messages_view.updated_at
 FROM
     feed_messages_view
 WHERE
@@ -557,6 +567,7 @@ func (q *Queries) FeedMessagesByFeedSlug(ctx context.Context, arg FeedMessagesBy
 			&i.FeedMessagesView.FeedSlug,
 			&i.FeedMessagesView.RawRequest,
 			&i.FeedMessagesView.RawHeaders,
+			&i.FeedMessagesView.RawQueryParams,
 			&i.FeedMessagesView.Title,
 			&i.FeedMessagesView.Message,
 			&i.FeedMessagesView.Priority,

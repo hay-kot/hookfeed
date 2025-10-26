@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestGetHeader(t *testing.T) {
+func Test_GetHeader(t *testing.T) {
 	tests := []struct {
 		name     string
 		headers  map[string]string
@@ -63,7 +63,7 @@ func TestGetHeader(t *testing.T) {
 	}
 }
 
-func TestGetQueryParam(t *testing.T) {
+func Test_GetQueryParam(t *testing.T) {
 	tests := []struct {
 		name     string
 		query    map[string][]string
@@ -117,7 +117,7 @@ func TestGetQueryParam(t *testing.T) {
 	}
 }
 
-func TestParsePriority(t *testing.T) {
+func Test_ParsePriority(t *testing.T) {
 	tests := []struct {
 		name     string
 		input    string
@@ -156,7 +156,7 @@ func TestParsePriority(t *testing.T) {
 	}
 }
 
-func TestParseBool(t *testing.T) {
+func Test_ParseBool(t *testing.T) {
 	tests := []struct {
 		name     string
 		input    string
@@ -184,7 +184,7 @@ func TestParseBool(t *testing.T) {
 	}
 }
 
-func TestSplitAndTrim(t *testing.T) {
+func Test_SplitAndTrim(t *testing.T) {
 	tests := []struct {
 		name     string
 		input    string
@@ -221,6 +221,129 @@ func TestSplitAndTrim(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			result := SplitAndTrim(tt.input)
 			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func Test_copyAndTransformValues(t *testing.T) {
+	tests := []struct {
+		name       string
+		input      map[string][]string
+		middleware []func(key, value string) string
+		expected   string
+		wantErr    bool
+	}{
+		{
+			name:     "empty input",
+			input:    map[string][]string{},
+			expected: "{}",
+			wantErr:  false,
+		},
+		{
+			name: "single value unwrapped",
+			input: map[string][]string{
+				"key1": {"value1"},
+			},
+			expected: `{"key1":"value1"}`,
+			wantErr:  false,
+		},
+		{
+			name: "multiple values remain as array",
+			input: map[string][]string{
+				"key1": {"value1", "value2", "value3"},
+			},
+			expected: `{"key1":["value1","value2","value3"]}`,
+			wantErr:  false,
+		},
+		{
+			name: "mixed single and multiple values",
+			input: map[string][]string{
+				"single": {"one"},
+				"multi":  {"first", "second"},
+			},
+			expected: `{"multi":["first","second"],"single":"one"}`,
+			wantErr:  false,
+		},
+		{
+			name: "empty value array omitted",
+			input: map[string][]string{
+				"key1":  {"value1"},
+				"empty": {},
+				"key2":  {"value2"},
+			},
+			expected: `{"key1":"value1","key2":"value2"}`,
+			wantErr:  false,
+		},
+		{
+			name: "with middleware single function",
+			input: map[string][]string{
+				"normal": {"test"},
+				"secret": {"password123"},
+			},
+			middleware: []func(key, value string) string{
+				func(key, value string) string {
+					if key == "secret" {
+						return "<redacted>"
+					}
+					return value
+				},
+			},
+			expected: `{"normal":"test","secret":"<redacted>"}`,
+			wantErr:  false,
+		},
+		{
+			name: "with middleware multiple functions",
+			input: map[string][]string{
+				"text": {"hello"},
+			},
+			middleware: []func(key, value string) string{
+				func(key, value string) string {
+					return value + "-mw1"
+				},
+				func(key, value string) string {
+					return value + "-mw2"
+				},
+			},
+			expected: `{"text":"hello-mw1-mw2"}`,
+			wantErr:  false,
+		},
+		{
+			name: "middleware applied to multi-value arrays",
+			input: map[string][]string{
+				"values": {"a", "b", "c"},
+			},
+			middleware: []func(key, value string) string{
+				func(key, value string) string {
+					return value + "-modified"
+				},
+			},
+			expected: `{"values":["a-modified","b-modified","c-modified"]}`,
+			wantErr:  false,
+		},
+		{
+			name: "sanitize secrets middleware",
+			input: map[string][]string{
+				"Authorization": {"Bearer abc123"},
+				"X-Api-Key":     {"secret-key"},
+				"Content-Type":  {"application/json"},
+			},
+			middleware: []func(key, value string) string{sanitizeSecrets},
+			expected:   `{"Authorization":"Bearer <redacted>","Content-Type":"application/json","X-Api-Key":"<redacted>"}`,
+			wantErr:    false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := copyAndTransformValues(tt.input, tt.middleware...)
+
+			if tt.wantErr {
+				require.Error(t, err)
+				return
+			}
+
+			require.NoError(t, err)
+			assert.JSONEq(t, tt.expected, string(result))
 		})
 	}
 }

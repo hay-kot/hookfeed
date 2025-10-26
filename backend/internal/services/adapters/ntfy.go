@@ -30,9 +30,10 @@ type NtfyMessage struct {
 
 // NtfyAdapter adapts ntfy-style requests to FeedMessage
 type NtfyAdapter struct {
-	Message    NtfyMessage
-	RawBody    []byte
-	RawHeaders map[string]string
+	Message        NtfyMessage
+	RawBody        []byte
+	RawHeaders     map[string]string
+	RawQueryParams map[string][]string
 }
 
 // UnmarshalRequest parses an ntfy-compatible HTTP request
@@ -89,6 +90,7 @@ func (na *NtfyAdapter) UnmarshalRequest(r *http.Request) error {
 
 	// Parse query parameters (override JSON if present)
 	query := r.URL.Query()
+	na.RawQueryParams = query
 
 	if title := GetQueryParam(query, "title", "t"); title != "" {
 		na.Message.Title = title
@@ -161,19 +163,40 @@ func (na *NtfyAdapter) UnmarshalRequest(r *http.Request) error {
 
 // AsFeedMessage converts the ntfy message to a FeedMessageCreate DTO
 func (na *NtfyAdapter) AsFeedMessage() dtos.FeedMessageCreate {
-	// Ensure RawRequest is valid JSON
-	var rawRequestJSON json.RawMessage
+	// Build the body structure for RawRequest
+	var bodyData any
 	if json.Valid(na.RawBody) {
-		// Body is already valid JSON
-		rawRequestJSON = json.RawMessage(na.RawBody)
+		// Body is already valid JSON, unmarshal it
+		json.Unmarshal(na.RawBody, &bodyData)
 	} else {
-		// Body is plain text, wrap it in JSON
-		wrapped := map[string]string{"body": string(na.RawBody)}
-		rawRequestJSON, _ = json.Marshal(wrapped)
+		// Body is plain text, wrap it
+		bodyData = map[string]string{"body": string(na.RawBody)}
 	}
 
-	// Marshal headers
-	headersJSON, _ := json.Marshal(na.RawHeaders)
+	// Convert map[string]string headers to http.Header format
+	headers := make(map[string][]string)
+	for k, v := range na.RawHeaders {
+		headers[k] = []string{v}
+	}
+
+	// Use the constructor to ensure proper initialization of raw fields
+	createDTO, err := dtos.NewFeedMessageCreateFromHTTP(
+		na.Message.Topic,
+		bodyData,
+		headers,
+		na.RawQueryParams,
+	)
+	if err != nil {
+		// Fallback to empty DTO if constructor fails (shouldn't happen)
+		createDTO = dtos.FeedMessageCreate{
+			FeedID:         na.Message.Topic,
+			RawRequest:     json.RawMessage("{}"),
+			RawHeaders:     json.RawMessage("{}"),
+			RawQueryParams: json.RawMessage("{}"),
+			Logs:           []string{},
+			Metadata:       json.RawMessage("{}"),
+		}
+	}
 
 	// Build metadata from ntfy-specific fields
 	metadata := make(map[string]interface{})
@@ -194,17 +217,15 @@ func (na *NtfyAdapter) AsFeedMessage() dtos.FeedMessageCreate {
 	}
 	metadataJSON, _ := json.Marshal(metadata)
 
+	// Override with ntfy-specific parsed fields
 	title := na.Message.Title
 	message := na.Message.Message
 	priority := na.Message.Priority
 
-	return dtos.FeedMessageCreate{
-		FeedID:     na.Message.Topic,
-		RawRequest: rawRequestJSON,
-		RawHeaders: json.RawMessage(headersJSON),
-		Title:      &title,
-		Message:    &message,
-		Priority:   &priority,
-		Metadata:   json.RawMessage(metadataJSON),
-	}
+	createDTO.Title = &title
+	createDTO.Message = &message
+	createDTO.Priority = &priority
+	createDTO.Metadata = json.RawMessage(metadataJSON)
+
+	return createDTO
 }

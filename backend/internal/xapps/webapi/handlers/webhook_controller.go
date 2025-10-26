@@ -49,9 +49,10 @@ func (wc *WebhookController) HandleWebhook(w http.ResponseWriter, r *http.Reques
 
 	// Build the webhook request
 	webhookReq := dtos.WebhookRequest{
-		FeedKey: key,
-		Headers: r.Header,
-		Body:    val,
+		FeedKey:     key,
+		Headers:     r.Header,
+		QueryParams: r.URL.Query(),
+		Body:        val,
 	}
 
 	// Process the webhook

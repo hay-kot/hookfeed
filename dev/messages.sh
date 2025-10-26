@@ -97,6 +97,46 @@ echo ""
 echo -e "${GREEN}✓ All test messages sent successfully!${NC}"
 echo ""
 
+# Query Parameter Testing - Exercise the query parameter parsing path
+echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo -e "${BLUE}  Query Parameter Testing${NC}"
+echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo ""
+echo -e "${YELLOW}Testing ntfy-style query parameters...${NC}"
+echo ""
+
+# Message 1: Basic query parameters
+echo -e "${BLUE}[1/4]${NC} Sending message with basic query parameters..."
+echo -e "${YELLOW}$ curl -X POST '$API_URL/$TOPIC?title=Query+Test&priority=3&tags=test,gear'${NC}"
+curl -s -X POST "$API_URL/$TOPIC?title=Query+Test&priority=3&tags=test,gear" \
+    -d "This message uses query parameters instead of headers" | jq . 2>/dev/null || echo "✓ Sent"
+echo ""
+
+# Message 2: High priority with click action
+echo -e "${BLUE}[2/4]${NC} Sending high priority with click action..."
+echo -e "${YELLOW}$ curl -X POST '$API_URL/$TOPIC?title=Click+Me&priority=4&tags=link&click=https://github.com/hay-kot/hookfeed'${NC}"
+curl -s -X POST "$API_URL/$TOPIC?title=Click+Me&priority=4&tags=link&click=https://github.com/hay-kot/hookfeed" \
+    -d "Click this notification to visit the HookFeed repository" | jq . 2>/dev/null || echo "✓ Sent"
+echo ""
+
+# Message 3: All query parameters combined
+echo -e "${BLUE}[3/4]${NC} Sending message with all query parameters..."
+echo -e "${YELLOW}$ curl -X POST '$API_URL/$TOPIC?title=Full+Feature+Test&priority=5&tags=rotating_light,warning&click=https://example.com'${NC}"
+curl -s -X POST "$API_URL/$TOPIC?title=Full+Feature+Test&priority=5&tags=rotating_light,warning&click=https://example.com" \
+    -d "This message demonstrates all query parameters: title, priority, tags, and click" | jq . 2>/dev/null || echo "✓ Sent"
+echo ""
+
+# Message 4: URL-encoded special characters in query params
+echo -e "${BLUE}[4/4]${NC} Sending message with URL-encoded special characters..."
+ENCODED_TITLE=$(printf '%s' 'Test: Special & Characters! 🎉' | jq -sRr @uri)
+echo -e "${YELLOW}$ curl -X POST '$API_URL/$TOPIC?title=$ENCODED_TITLE&priority=3&tags=sparkles'${NC}"
+curl -s -X POST "$API_URL/$TOPIC?title=$ENCODED_TITLE&priority=3&tags=sparkles" \
+    -d "Testing URL encoding in query parameters" | jq . 2>/dev/null || echo "✓ Sent"
+echo ""
+
+echo -e "${GREEN}✓ Query parameter tests complete!${NC}"
+echo ""
+
 # Bonus: Send a message with JSON body via curl
 echo -e "${YELLOW}Sending JSON message via curl...${NC}"
 curl -s -X POST "$API_URL/$TOPIC" \

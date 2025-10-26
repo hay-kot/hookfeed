@@ -11,6 +11,7 @@ INSERT INTO feed_messages (
     feed_slug,
     raw_request,
     raw_headers,
+    raw_query_params,
     title,
     message,
     priority,
@@ -20,8 +21,8 @@ INSERT INTO feed_messages (
     received_at,
     processed_at
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
-) RETURNING id, feed_slug, raw_request, raw_headers, title, message, priority, logs, metadata, state, state_changed_at, received_at, processed_at, created_at, updated_at;
+    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12
+) RETURNING id, feed_slug, raw_request, raw_headers, raw_query_params, title, message, priority, logs, metadata, state, state_changed_at, received_at, processed_at, created_at, updated_at;
 
 -- name: FeedMessageGetAll :many
 SELECT
@@ -91,7 +92,7 @@ SET
     state_changed_at = CURRENT_TIMESTAMP
 WHERE
     id = $1
-RETURNING id, feed_slug, raw_request, raw_headers, title, message, priority, logs, metadata, state, state_changed_at, received_at, processed_at, created_at, updated_at;
+RETURNING id, feed_slug, raw_request, raw_headers, raw_query_params, title, message, priority, logs, metadata, state, state_changed_at, received_at, processed_at, created_at, updated_at;
 
 -- name: FeedMessageDeleteByID :exec
 DELETE FROM

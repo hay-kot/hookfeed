@@ -2,7 +2,6 @@ package services
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -59,35 +58,26 @@ func (w *WebhookService) ProcessWebhook(ctx context.Context, req dtos.WebhookReq
 	w.logger.Info().
 		Interface("body", req.Body).
 		Interface("headers", req.Headers).
+		Interface("query_params", req.QueryParams).
 		Msg("webhook payload")
 
-	// Convert request body and headers to JSON
-	rawRequest, err := json.Marshal(req.Body)
+	// Create the feed message using the constructor to ensure proper initialization
+	createMsg, err := dtos.NewFeedMessageCreateFromHTTP(
+		feed.ID,
+		req.Body,
+		req.Headers,
+		req.QueryParams,
+	)
 	if err != nil {
 		w.logger.Error().
 			Err(err).
-			Msg("failed to marshal request body")
-		return nil, fmt.Errorf("failed to marshal request body: %w", err)
+			Msg("failed to create feed message from HTTP request")
+		return nil, fmt.Errorf("failed to create feed message: %w", err)
 	}
 
-	rawHeaders, err := json.Marshal(req.Headers)
-	if err != nil {
-		w.logger.Error().
-			Err(err).
-			Msg("failed to marshal request headers")
-		return nil, fmt.Errorf("failed to marshal request headers: %w", err)
-	}
-
-	// Create the feed message
+	// Set timestamp
 	receivedAt := time.Now()
-	createMsg := dtos.FeedMessageCreate{
-		FeedID:     feed.ID,
-		RawRequest: json.RawMessage(rawRequest),
-		RawHeaders: json.RawMessage(rawHeaders),
-		ReceivedAt: &receivedAt,
-		Logs:       []string{},
-		Metadata:   json.RawMessage("{}"),
-	}
+	createMsg.ReceivedAt = &receivedAt
 
 	// Save message to database
 	message, err := w.feedMessageService.Create(ctx, createMsg)
