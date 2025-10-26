@@ -67,12 +67,6 @@ func ParsePriority(s string) (int32, error) {
 	return int32(p), nil
 }
 
-// ParseBool converts a string to bool, accepting various formats
-func ParseBool(s string) bool {
-	s = strings.ToLower(strings.TrimSpace(s))
-	return s == "true" || s == "1" || s == "yes"
-}
-
 // SplitAndTrim splits a comma-separated string and trims whitespace from each element
 func SplitAndTrim(s string) []string {
 	if s == "" {
@@ -109,15 +103,17 @@ func sanitizeSecrets(key, value string) string {
 
 	// Redact query parameters that commonly contain secrets
 	if keyLower == "token" || keyLower == "api_key" || keyLower == "apikey" ||
-	   keyLower == "secret" || keyLower == "password" || keyLower == "key" {
+		keyLower == "secret" || keyLower == "password" || keyLower == "key" {
 		return "<redacted>"
 	}
 
 	return value
 }
 
-// copyHTTPInto copies all HTTP request data (headers, query params, body) into the FeedMessageCreate
-func copyHTTPInto(val dtos.FeedMessageCreate, r *http.Request) (dtos.FeedMessageCreate, error) {
+// feedMessageFromRequest copies all HTTP request data (headers, query params, body) into the FeedMessageCreate
+func feedMessageFromRequest(r *http.Request) (dtos.FeedMessageCreate, error) {
+	val := dtos.FeedMessageCreateNew()
+
 	rawBody, err := copyBody(r)
 	if err != nil {
 		return dtos.FeedMessageCreate{}, err

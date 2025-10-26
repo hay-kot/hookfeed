@@ -76,8 +76,7 @@ func (w *WebhookService) ProcessWebhook(ctx context.Context, req dtos.WebhookReq
 	}
 
 	// Set timestamp
-	receivedAt := time.Now()
-	createMsg.ReceivedAt = &receivedAt
+	createMsg.ReceivedAt = time.Now()
 
 	// Save message to database
 	message, err := w.feedMessageService.Create(ctx, createMsg)

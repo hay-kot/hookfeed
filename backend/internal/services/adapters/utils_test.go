@@ -156,34 +156,6 @@ func Test_ParsePriority(t *testing.T) {
 	}
 }
 
-func Test_ParseBool(t *testing.T) {
-	tests := []struct {
-		name     string
-		input    string
-		expected bool
-	}{
-		{name: "true lowercase", input: "true", expected: true},
-		{name: "true uppercase", input: "TRUE", expected: true},
-		{name: "true mixed case", input: "True", expected: true},
-		{name: "1", input: "1", expected: true},
-		{name: "yes lowercase", input: "yes", expected: true},
-		{name: "yes uppercase", input: "YES", expected: true},
-		{name: "false", input: "false", expected: false},
-		{name: "0", input: "0", expected: false},
-		{name: "no", input: "no", expected: false},
-		{name: "empty", input: "", expected: false},
-		{name: "random string", input: "random", expected: false},
-		{name: "with spaces", input: "  true  ", expected: true},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := ParseBool(tt.input)
-			assert.Equal(t, tt.expected, result)
-		})
-	}
-}
-
 func Test_SplitAndTrim(t *testing.T) {
 	tests := []struct {
 		name     string
