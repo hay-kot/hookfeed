@@ -1,7 +1,12 @@
 {
   "permissions": {
     "allow": [
-      "Bash(task lint)"
+      "Bash(task lint)",
+      "Bash(task fmt)",
+      "Bash(task test)",
+      "Bash(task swag:*)",
+      "Bash(task ui:*)",
+      "Bash(task gen)"
     ],
     "deny": [],
     "ask": []

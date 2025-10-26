@@ -1,210 +1,93 @@
 package adapters
 
 import (
+	"cmp"
 	"encoding/json"
-	"io"
+	"fmt"
 	"net/http"
-	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/hay-kot/hookfeed/backend/internal/data/dtos"
 )
 
-type Adapter interface {
-	UnmarshalRequest(r *http.Request) error
-	AsFeedMessage() dtos.FeedMessageCreate
+// ntfyMessage represents a parsed ntfy-compatible message
+type ntfyMessage struct {
+	Topic    string            `json:"topic"`
+	Message  string            `json:"message"`
+	Title    string            `json:"title"`
+	Priority int32             `json:"priority"`
+	Tags     []string          `json:"tags"`
+	Click    string            `json:"click"`
+	Icon     string            `json:"icon"`
+	Actions  []json.RawMessage `json:"actions"`
+	Markdown bool              `json:"markdown"`
 }
 
-// NtfyMessage represents a parsed ntfy-compatible message
-type NtfyMessage struct {
-	Topic    string            `json:"topic,omitempty"`
-	Message  string            `json:"message,omitempty"`
-	Title    string            `json:"title,omitempty"`
-	Priority int32             `json:"priority,omitempty"`
-	Tags     []string          `json:"tags,omitempty"`
-	Click    string            `json:"click,omitempty"`
-	Icon     string            `json:"icon,omitempty"`
-	Actions  []json.RawMessage `json:"actions,omitempty"`
-	Markdown bool              `json:"markdown,omitempty"`
-}
-
-// NtfyAdapter adapts ntfy-style requests to FeedMessage
-type NtfyAdapter struct {
-	Message    NtfyMessage
-	RawBody    []byte
-	RawHeaders map[string]string
-}
-
-// UnmarshalRequest parses an ntfy-compatible HTTP request
-func (na *NtfyAdapter) UnmarshalRequest(r *http.Request) error {
-	topic := chi.URLParam(r, "topic")
-	na.Message = NtfyMessage{
-		Topic:    topic,
-		Priority: 3, // default priority
-	}
-
-	// Read body once
-	bodyBytes, err := io.ReadAll(r.Body)
+// ParseNtfyMessage parses a ntfy compatible http request and transforms it into
+// a validated creation object or returns an error.
+// Priority order: JSON body < Query Params < Headers
+func ParseNtfyMessage(r *http.Request) (dtos.FeedMessageCreate, error) {
+	// Copy HTTP request data (raw body, headers, query params)
+	data, err := feedMessageFromRequest(r)
 	if err != nil {
-		return err
-	}
-	na.RawBody = bodyBytes
-	// Restore body for potential later use
-	r.Body = io.NopCloser(strings.NewReader(string(bodyBytes)))
-
-	// Capture raw headers
-	na.RawHeaders = make(map[string]string)
-	for k, v := range r.Header {
-		if len(v) > 0 {
-			na.RawHeaders[k] = v[0]
-		}
+		return dtos.FeedMessageCreate{}, fmt.Errorf("failed to copy request: %w", err)
 	}
 
-	// Try to parse as JSON first
+	// Set the feed ID from URL parameter
+	data.FeedID = chi.URLParam(r, "topic")
+
+	// Parse JSON body if Content-Type is application/json
+	var jsonMsg ntfyMessage
 	if r.Header.Get("Content-Type") == "application/json" {
-		var jsonMsg NtfyMessage
-		if err := json.Unmarshal(bodyBytes, &jsonMsg); err == nil {
-			// JSON parsed successfully
-			if jsonMsg.Topic != "" {
-				na.Message.Topic = jsonMsg.Topic
-			}
-			if jsonMsg.Message != "" {
-				na.Message.Message = jsonMsg.Message
-			}
-			if jsonMsg.Title != "" {
-				na.Message.Title = jsonMsg.Title
-			}
-			if jsonMsg.Priority > 0 {
-				na.Message.Priority = jsonMsg.Priority
-			}
-			if len(jsonMsg.Tags) > 0 {
-				na.Message.Tags = jsonMsg.Tags
-			}
-			na.Message.Click = jsonMsg.Click
-			na.Message.Icon = jsonMsg.Icon
-			na.Message.Actions = jsonMsg.Actions
-			na.Message.Markdown = jsonMsg.Markdown
+		var bodyData map[string]interface{}
+		if err := json.Unmarshal(data.RawRequest, &bodyData); err == nil {
+			// Try to unmarshal as ntfy message structure
+			bodyBytes, _ := json.Marshal(bodyData)
+			_ = json.Unmarshal(bodyBytes, &jsonMsg)
 		}
 	}
 
-	// Parse query parameters (override JSON if present)
+	// Extract values from query parameters
 	query := r.URL.Query()
+	queryTitle := GetQueryParam(query, "title", "t")
+	queryMessage := GetQueryParam(query, "message", "m")
+	queryPriorityStr := GetQueryParam(query, "priority", "p")
 
-	if title := GetQueryParam(query, "title", "t"); title != "" {
-		na.Message.Title = title
+	var queryPriority int32
+	if queryPriorityStr != "" {
+		queryPriority, _ = ParsePriority(queryPriorityStr)
 	}
 
-	if msgText := GetQueryParam(query, "message", "m"); msgText != "" {
-		na.Message.Message = msgText
+	// Extract values from headers
+	headerTitle := GetHeader(r, "X-Title", "Title")
+	headerMessage := GetHeader(r, "X-Message", "Message")
+	headerPriorityStr := GetHeader(r, "X-Priority", "Priority")
+
+	var headerPriority int32
+	if headerPriorityStr != "" {
+		headerPriority, _ = ParsePriority(headerPriorityStr)
 	}
 
-	if priorityStr := GetQueryParam(query, "priority", "p"); priorityStr != "" {
-		if p, err := ParsePriority(priorityStr); err == nil {
-			na.Message.Priority = p
+	// Use cmp.Or to select first non-empty value (precedence: headers > query > json)
+	title := cmp.Or(headerTitle, queryTitle, jsonMsg.Title)
+	message := cmp.Or(headerMessage, queryMessage, jsonMsg.Message)
+	priority := cmp.Or(headerPriority, queryPriority, jsonMsg.Priority, int32(3))
+
+	// If message is still empty, try to use the raw body as plain text
+	if message == "" {
+		var bodyData map[string]interface{}
+		if err := json.Unmarshal(data.RawRequest, &bodyData); err == nil {
+			// Check for $body key (plain text wrapped by copyBody)
+			if bodyStr, ok := bodyData["$body"].(string); ok && bodyStr != "" {
+				message = bodyStr
+			}
 		}
 	}
 
-	if tagsStr := GetQueryParam(query, "tags", "ta"); tagsStr != "" {
-		na.Message.Tags = SplitAndTrim(tagsStr)
-	}
+	// Set the parsed ntfy fields
+	data.Title = title
+	data.Message = message
+	data.Priority = priority
 
-	if click := GetQueryParam(query, "click"); click != "" {
-		na.Message.Click = click
-	}
-
-	if icon := GetQueryParam(query, "icon"); icon != "" {
-		na.Message.Icon = icon
-	}
-
-	if markdown := GetQueryParam(query, "markdown", "md"); markdown != "" {
-		na.Message.Markdown = ParseBool(markdown)
-	}
-
-	// Parse headers (headers override query parameters if present)
-	if title := GetHeader(r, "X-Title", "Title"); title != "" {
-		na.Message.Title = title
-	}
-
-	if msgText := GetHeader(r, "X-Message", "Message"); msgText != "" {
-		na.Message.Message = msgText
-	}
-
-	if priorityStr := GetHeader(r, "X-Priority", "Priority"); priorityStr != "" {
-		if p, err := ParsePriority(priorityStr); err == nil {
-			na.Message.Priority = p
-		}
-	}
-
-	if tagsStr := GetHeader(r, "X-Tags", "Tags"); tagsStr != "" {
-		na.Message.Tags = SplitAndTrim(tagsStr)
-	}
-
-	if click := GetHeader(r, "X-Click", "Click"); click != "" {
-		na.Message.Click = click
-	}
-
-	if icon := GetHeader(r, "X-Icon", "Icon"); icon != "" {
-		na.Message.Icon = icon
-	}
-
-	if markdown := GetHeader(r, "X-Markdown", "Markdown"); markdown != "" {
-		na.Message.Markdown = ParseBool(markdown)
-	}
-
-	// If message is still empty, use body as plain text
-	if na.Message.Message == "" {
-		na.Message.Message = string(bodyBytes)
-	}
-
-	return nil
-}
-
-// AsFeedMessage converts the ntfy message to a FeedMessageCreate DTO
-func (na *NtfyAdapter) AsFeedMessage() dtos.FeedMessageCreate {
-	// Ensure RawRequest is valid JSON
-	var rawRequestJSON json.RawMessage
-	if json.Valid(na.RawBody) {
-		// Body is already valid JSON
-		rawRequestJSON = json.RawMessage(na.RawBody)
-	} else {
-		// Body is plain text, wrap it in JSON
-		wrapped := map[string]string{"body": string(na.RawBody)}
-		rawRequestJSON, _ = json.Marshal(wrapped)
-	}
-
-	// Marshal headers
-	headersJSON, _ := json.Marshal(na.RawHeaders)
-
-	// Build metadata from ntfy-specific fields
-	metadata := make(map[string]interface{})
-	if len(na.Message.Tags) > 0 {
-		metadata["tags"] = na.Message.Tags
-	}
-	if na.Message.Click != "" {
-		metadata["click"] = na.Message.Click
-	}
-	if na.Message.Icon != "" {
-		metadata["icon"] = na.Message.Icon
-	}
-	if len(na.Message.Actions) > 0 {
-		metadata["actions"] = na.Message.Actions
-	}
-	if na.Message.Markdown {
-		metadata["markdown"] = true
-	}
-	metadataJSON, _ := json.Marshal(metadata)
-
-	title := na.Message.Title
-	message := na.Message.Message
-	priority := na.Message.Priority
-
-	return dtos.FeedMessageCreate{
-		FeedID:     na.Message.Topic,
-		RawRequest: rawRequestJSON,
-		RawHeaders: json.RawMessage(headersJSON),
-		Title:      &title,
-		Message:    &message,
-		Priority:   &priority,
-		Metadata:   json.RawMessage(metadataJSON),
-	}
+	return data, nil
 }

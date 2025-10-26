@@ -1,9 +1,10 @@
 package dtos
 
 type Feed struct {
-	Name        string `json:"name"`
-	ID          string `json:"id"`
-	Keys        []string
+	Name        string    `json:"name"`
+	Category    string    `json:"category"`
+	ID          string    `json:"id"`
+	Keys        []string  `json:"-"`
 	Description string    `json:"description"`
 	Middleware  []string  `json:"middleware"`
 	Adapters    []string  `json:"adapters"`

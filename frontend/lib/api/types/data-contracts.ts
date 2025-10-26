@@ -13,9 +13,9 @@
 
 export interface Feed {
   adapters: string[];
+  category: string;
   description: string;
   id: string;
-  keys: string[];
   middleware: string[];
   name: string;
   retention: Retention;
@@ -27,11 +27,12 @@ export interface FeedMessage {
   id: string;
   logs: string[];
   message: string;
-  metadata: any;
+  metadata: number[];
   priority: number;
   processedAt: string;
-  rawHeaders: any;
-  rawRequest: any;
+  rawHeaders: number[];
+  rawQueryParams: number[];
+  rawRequest: number[];
   receivedAt: string;
   state: string;
   stateChangedAt: string;
@@ -54,15 +55,16 @@ export interface FeedMessageCreate {
   feedSlug: string;
   logs: string[];
   message: string;
-  metadata: any;
+  metadata: number[];
   /**
    * @min 1
    * @max 5
    */
   priority: number;
   processedAt: string;
-  rawHeaders: any;
-  rawRequest: any;
+  rawHeaders: number[];
+  rawQueryParams: number[];
+  rawRequest: number[];
   receivedAt: string;
   state: "new" | "acknowledged" | "resolved" | "archived";
   title: string;

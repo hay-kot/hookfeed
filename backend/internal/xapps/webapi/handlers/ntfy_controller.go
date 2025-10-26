@@ -62,21 +62,18 @@ func (nc *NtfyController) Publish(w http.ResponseWriter, r *http.Request) error 
 		Msg("received ntfy message")
 
 		// Verify feed exists
-	cache := nc.feedService.GetCache()
-	if cache != nil {
-		ok, _ := cache.GetByKey(topic)
-		if !ok {
-			nc.logger.Warn().Str("topic", topic).Msg("feed not found for ntfy message")
-			return server.Error().
-				Status(http.StatusNotFound).
-				Msg("feed not found").
-				Write(r.Context(), w)
-		}
+	_, ok := nc.feedService.GetByKey(topic)
+	if !ok {
+		nc.logger.Warn().Str("topic", topic).Msg("feed not found for ntfy message")
+		return server.Error().
+			Status(http.StatusNotFound).
+			Msg("feed not found").
+			Write(r.Context(), w)
 	}
 
-	// Use adapter to parse the request
-	adapter := &adapters.NtfyAdapter{}
-	if err := adapter.UnmarshalRequest(r); err != nil {
+	// Parse the ntfy request
+	createDTO, err := adapters.ParseNtfyMessage(r)
+	if err != nil {
 		nc.logger.Error().Err(err).Str("topic", topic).Msg("failed to parse ntfy message")
 		return server.Error().
 			Status(http.StatusBadRequest).
@@ -86,13 +83,12 @@ func (nc *NtfyController) Publish(w http.ResponseWriter, r *http.Request) error 
 
 	nc.logger.Info().
 		Str("topic", topic).
-		Str("title", adapter.Message.Title).
-		Int32("priority", adapter.Message.Priority).
-		Strs("tags", adapter.Message.Tags).
+		Str("title", createDTO.Title).
+		Str("message", createDTO.Message).
+		Int32("priority", createDTO.Priority).
 		Msg("parsed ntfy message")
 
-	// Convert to DTO and create feed message
-	createDTO := adapter.AsFeedMessage()
+	// Create feed message
 	feedMessage, err := nc.feedMessageService.Create(r.Context(), createDTO)
 	if err != nil {
 		nc.logger.Error().Err(err).Str("topic", topic).Msg("failed to create feed message from ntfy")

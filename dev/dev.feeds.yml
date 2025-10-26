@@ -7,6 +7,7 @@ middleware:
 # Feed definitions
 feeds:
   - name: "Production Alerts"
+    category: Alerting
     id: "prod-alerts"
     keys:
       - 1ftyjSfiZott986g1rWykD # github
@@ -25,6 +26,7 @@ feeds:
       maxAgeDays: 90
 
   - name: "GitHub Events"
+    category: External
     id: "github-events"
     keys:
       - 1ftyjSfiZott983g1rWykD # github
@@ -42,6 +44,7 @@ feeds:
       maxAgeDays: 30
 
   - name: "Development Testing"
+    category: Alerting
     id: "dev-test"
     keys:
       - 3ftyjSfiZott983g1rWykD # github
@@ -58,6 +61,7 @@ feeds:
       maxAgeDays: 1
 
   - name: "Ntfy Messages"
+    category: Ntfy
     id: "ntfy-test"
     keys:
       - ntfy-test # Simple key matching the topic name for ntfy compatibility

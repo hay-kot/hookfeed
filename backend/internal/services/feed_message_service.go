@@ -149,33 +149,34 @@ func (s *FeedMessageService) Search(ctx context.Context, query dtos.FeedMessageQ
 }
 
 func (s *FeedMessageService) Create(ctx context.Context, data dtos.FeedMessageCreate) (dtos.FeedMessage, error) {
-	priority := int32(3)
-	if data.Priority != nil {
-		priority = *data.Priority
+	priority := data.Priority
+	if priority == 0 {
+		priority = 3
 	}
 
-	state := "new"
-	if data.State != nil {
-		state = *data.State
+	state := data.State
+	if state == "" {
+		state = "new"
 	}
 
-	receivedAt := time.Now()
-	if data.ReceivedAt != nil {
-		receivedAt = *data.ReceivedAt
+	receivedAt := data.ReceivedAt
+	if receivedAt.IsZero() {
+		receivedAt = time.Now()
 	}
 
 	row, err := s.db.FeedMessageCreate(ctx, db.FeedMessageCreateParams{
-		FeedSlug:    data.FeedID,
-		RawRequest:  []byte(data.RawRequest),
-		RawHeaders:  []byte(data.RawHeaders),
-		Title:       data.Title,
-		Message:     data.Message,
-		Priority:    &priority,
-		Logs:        data.Logs,
-		Metadata:    []byte(data.Metadata),
-		State:       &state,
-		ReceivedAt:  receivedAt,
-		ProcessedAt: timePtrToPgTimestamp(data.ProcessedAt),
+		FeedSlug:       data.FeedID,
+		RawRequest:     []byte(data.RawRequest),
+		RawHeaders:     []byte(data.RawHeaders),
+		RawQueryParams: []byte(data.RawQueryParams),
+		Title:          &data.Title,
+		Message:        &data.Message,
+		Priority:       &priority,
+		Logs:           data.Logs,
+		Metadata:       []byte(data.Metadata),
+		State:          &state,
+		ReceivedAt:     receivedAt,
+		ProcessedAt:    timePtrToPgTimestamp(data.ProcessedAt),
 	})
 	if err != nil {
 		return dtos.FeedMessage{}, err

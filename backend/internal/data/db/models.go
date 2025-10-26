@@ -28,6 +28,7 @@ type FeedMessage struct {
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
 	SearchVector   interface{}
+	RawQueryParams []byte
 }
 
 type FeedMessagesView struct {
@@ -35,6 +36,7 @@ type FeedMessagesView struct {
 	FeedSlug       string
 	RawRequest     []byte
 	RawHeaders     []byte
+	RawQueryParams []byte
 	Title          *string
 	Message        *string
 	Priority       *int32

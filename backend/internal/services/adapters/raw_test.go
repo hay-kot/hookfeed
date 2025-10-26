@@ -20,9 +20,9 @@ func TestRawAdapter_UnmarshalRequest_ValidJSON(t *testing.T) {
 
 	createDTO := dtos.FeedMessageCreate{
 		FeedID:   "test-feed",
-		Title:    &title,
-		Message:  &message,
-		Priority: &priority,
+		Title:    title,
+		Message:  message,
+		Priority: priority,
 	}
 
 	bodyBytes, _ := json.Marshal(createDTO)
@@ -34,9 +34,9 @@ func TestRawAdapter_UnmarshalRequest_ValidJSON(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, "test-feed", adapter.CreateDTO.FeedID)
-	assert.Equal(t, title, *adapter.CreateDTO.Title)
-	assert.Equal(t, message, *adapter.CreateDTO.Message)
-	assert.Equal(t, priority, *adapter.CreateDTO.Priority)
+	assert.Equal(t, title, adapter.CreateDTO.Title)
+	assert.Equal(t, message, adapter.CreateDTO.Message)
+	assert.Equal(t, priority, adapter.CreateDTO.Priority)
 }
 
 func TestRawAdapter_UnmarshalRequest_WithRawRequest(t *testing.T) {
@@ -100,12 +100,13 @@ func TestRawAdapter_UnmarshalRequest_AutoPopulateRawHeaders(t *testing.T) {
 	// Should auto-populate RawHeaders
 	assert.NotNil(t, adapter.CreateDTO.RawHeaders)
 
-	var headers map[string]string
+	// NewFeedMessageCreateFromHTTP stores headers as map[string][]string
+	var headers map[string][]string
 	err = json.Unmarshal(adapter.CreateDTO.RawHeaders, &headers)
 	require.NoError(t, err)
 
-	assert.Equal(t, "application/json", headers["Content-Type"])
-	assert.Equal(t, "custom-value", headers["X-Custom-Header"])
+	assert.Equal(t, []string{"application/json"}, headers["Content-Type"])
+	assert.Equal(t, []string{"custom-value"}, headers["X-Custom-Header"])
 }
 
 func TestRawAdapter_UnmarshalRequest_WithRawHeaders(t *testing.T) {
@@ -195,18 +196,18 @@ func TestRawAdapter_AsFeedMessage(t *testing.T) {
 	adapter := &RawAdapter{
 		CreateDTO: dtos.FeedMessageCreate{
 			FeedID:   "test-feed",
-			Title:    &title,
-			Message:  &message,
-			Priority: &priority,
+			Title:    title,
+			Message:  message,
+			Priority: priority,
 		},
 	}
 
 	dto := adapter.AsFeedMessage()
 
 	assert.Equal(t, "test-feed", dto.FeedID)
-	assert.Equal(t, title, *dto.Title)
-	assert.Equal(t, message, *dto.Message)
-	assert.Equal(t, priority, *dto.Priority)
+	assert.Equal(t, title, dto.Title)
+	assert.Equal(t, message, dto.Message)
+	assert.Equal(t, priority, dto.Priority)
 }
 
 func TestRawAdapter_UnmarshalRequest_ReadBodyError(t *testing.T) {
@@ -217,6 +218,13 @@ func TestRawAdapter_UnmarshalRequest_ReadBodyError(t *testing.T) {
 	adapter := &RawAdapter{}
 	err := adapter.UnmarshalRequest(req)
 	assert.Error(t, err)
+}
+
+// errorReader is a helper that always returns an error when reading
+type errorReader struct{}
+
+func (e *errorReader) Read(p []byte) (n int, err error) {
+	return 0, io.ErrUnexpectedEOF
 }
 
 func TestRawAdapter_UnmarshalRequest_WithMetadata(t *testing.T) {

@@ -656,7 +656,7 @@
         },
         "/{topic}": {
             "put": {
-                "description": "Accepts ntfy-style POST/PUT requests for publishing notifications",
+                "description": "Accepts ntfy-style POST/PUT requests for publishing notifications. Supports ntfy headers (X-Title, X-Message, etc.), query parameters (title, message, priority, etc.), JSON body, and plain text body.",
                 "consumes": [
                     "application/json",
                     "text/plain"
@@ -678,26 +678,86 @@
                     },
                     {
                         "type": "string",
-                        "description": "Notification title",
+                        "description": "Notification title (alias: t)",
+                        "name": "title",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Notification message (alias: m)",
+                        "name": "message",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Priority 1-5, default 3 (alias: p)",
+                        "name": "priority",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Comma-separated tags (alias: ta)",
+                        "name": "tags",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "URL opened when notification is clicked",
+                        "name": "click",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "URL for custom notification icon",
+                        "name": "icon",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Enable Markdown rendering (alias: md)",
+                        "name": "markdown",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Notification title (overrides query param)",
                         "name": "X-Title",
                         "in": "header"
                     },
                     {
                         "type": "integer",
-                        "description": "Priority (1-5, default 3)",
+                        "description": "Priority (1-5, default 3, overrides query param)",
                         "name": "X-Priority",
                         "in": "header"
                     },
                     {
                         "type": "string",
-                        "description": "Comma-separated tags",
+                        "description": "Comma-separated tags (overrides query param)",
                         "name": "X-Tags",
                         "in": "header"
                     },
                     {
                         "type": "string",
-                        "description": "Message content",
+                        "description": "Message content (overrides query param)",
                         "name": "X-Message",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Click URL (overrides query param)",
+                        "name": "X-Click",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Icon URL (overrides query param)",
+                        "name": "X-Icon",
+                        "in": "header"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Enable Markdown (overrides query param)",
+                        "name": "X-Markdown",
                         "in": "header"
                     },
                     {
@@ -719,7 +779,7 @@
                 }
             },
             "post": {
-                "description": "Accepts ntfy-style POST/PUT requests for publishing notifications",
+                "description": "Accepts ntfy-style POST/PUT requests for publishing notifications. Supports ntfy headers (X-Title, X-Message, etc.), query parameters (title, message, priority, etc.), JSON body, and plain text body.",
                 "consumes": [
                     "application/json",
                     "text/plain"
@@ -741,26 +801,86 @@
                     },
                     {
                         "type": "string",
-                        "description": "Notification title",
+                        "description": "Notification title (alias: t)",
+                        "name": "title",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Notification message (alias: m)",
+                        "name": "message",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Priority 1-5, default 3 (alias: p)",
+                        "name": "priority",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Comma-separated tags (alias: ta)",
+                        "name": "tags",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "URL opened when notification is clicked",
+                        "name": "click",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "URL for custom notification icon",
+                        "name": "icon",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Enable Markdown rendering (alias: md)",
+                        "name": "markdown",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Notification title (overrides query param)",
                         "name": "X-Title",
                         "in": "header"
                     },
                     {
                         "type": "integer",
-                        "description": "Priority (1-5, default 3)",
+                        "description": "Priority (1-5, default 3, overrides query param)",
                         "name": "X-Priority",
                         "in": "header"
                     },
                     {
                         "type": "string",
-                        "description": "Comma-separated tags",
+                        "description": "Comma-separated tags (overrides query param)",
                         "name": "X-Tags",
                         "in": "header"
                     },
                     {
                         "type": "string",
-                        "description": "Message content",
+                        "description": "Message content (overrides query param)",
                         "name": "X-Message",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Click URL (overrides query param)",
+                        "name": "X-Click",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Icon URL (overrides query param)",
+                        "name": "X-Icon",
+                        "in": "header"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Enable Markdown (overrides query param)",
+                        "name": "X-Markdown",
                         "in": "header"
                     },
                     {
@@ -793,17 +913,14 @@
                         "type": "string"
                     }
                 },
+                "category": {
+                    "type": "string"
+                },
                 "description": {
                     "type": "string"
                 },
                 "id": {
                     "type": "string"
-                },
-                "keys": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
                 },
                 "middleware": {
                     "type": "array",
@@ -853,6 +970,12 @@
                     "type": "string"
                 },
                 "rawHeaders": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "rawQueryParams": {
                     "type": "array",
                     "items": {
                         "type": "integer"
@@ -925,6 +1048,7 @@
             "required": [
                 "feedSlug",
                 "rawHeaders",
+                "rawQueryParams",
                 "rawRequest"
             ],
             "properties": {
@@ -955,6 +1079,12 @@
                     "type": "string"
                 },
                 "rawHeaders": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "rawQueryParams": {
                     "type": "array",
                     "items": {
                         "type": "integer"
