@@ -61,8 +61,8 @@ func (nc *NtfyController) Publish(w http.ResponseWriter, r *http.Request) error 
 		Str("content_type", r.Header.Get("Content-Type")).
 		Msg("received ntfy message")
 
-		// Verify feed exists
-	_, ok := nc.feedService.GetByKey(topic)
+	// Verify feed exists and get feed ID
+	feed, ok := nc.feedService.GetByKey(topic)
 	if !ok {
 		nc.logger.Warn().Str("topic", topic).Msg("feed not found for ntfy message")
 		return server.Error().
@@ -71,8 +71,8 @@ func (nc *NtfyController) Publish(w http.ResponseWriter, r *http.Request) error 
 			Write(r.Context(), w)
 	}
 
-	// Parse the ntfy request
-	createDTO, err := adapters.ParseNtfyMessage(r)
+	// Parse the ntfy request using the feed ID (not the key)
+	createDTO, err := adapters.ParseNtfyMessage(r, feed.ID)
 	if err != nil {
 		nc.logger.Error().Err(err).Str("topic", topic).Msg("failed to parse ntfy message")
 		return server.Error().
