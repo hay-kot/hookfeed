@@ -32,10 +32,16 @@ export const useFeedMessages = () => {
     try {
       isLoadingMessages.value = true
 
-      // Merge filters with current filters
-      const queryParams = {
-        ...currentFilters.value,
-        ...filters,
+      // Use provided filters, keeping only skip/limit from previous state if not provided
+      const queryParams: MessageFilters = {
+        skip: filters?.skip ?? 0,
+        limit: filters?.limit ?? 50,
+        ...(filters?.feedSlug !== undefined && { feedSlug: filters.feedSlug }),
+        ...(filters?.priority !== undefined && { priority: filters.priority }),
+        ...(filters?.state !== undefined && { state: filters.state }),
+        ...(filters?.since !== undefined && { since: filters.since }),
+        ...(filters?.until !== undefined && { until: filters.until }),
+        ...(filters?.q !== undefined && { q: filters.q }),
       }
 
       // Update current filters
@@ -159,8 +165,8 @@ export const useFeedMessages = () => {
   const loadMore = async () => {
     if (isLoadingMessages.value) return
 
-    currentFilters.value.skip = (currentFilters.value.skip || 0) + (currentFilters.value.limit || 50)
-    await fetchMessages()
+    const newSkip = (currentFilters.value.skip || 0) + (currentFilters.value.limit || 50)
+    await fetchMessages({ ...currentFilters.value, skip: newSkip })
   }
 
   return {
