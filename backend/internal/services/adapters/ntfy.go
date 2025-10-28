@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/go-chi/chi/v5"
 	"github.com/hay-kot/hookfeed/backend/internal/data/dtos"
 )
 
@@ -26,15 +25,15 @@ type ntfyMessage struct {
 // ParseNtfyMessage parses a ntfy compatible http request and transforms it into
 // a validated creation object or returns an error.
 // Priority order: JSON body < Query Params < Headers
-func ParseNtfyMessage(r *http.Request) (dtos.FeedMessageCreate, error) {
+func ParseNtfyMessage(r *http.Request, feedID string) (dtos.FeedMessageCreate, error) {
 	// Copy HTTP request data (raw body, headers, query params)
 	data, err := feedMessageFromRequest(r)
 	if err != nil {
 		return dtos.FeedMessageCreate{}, fmt.Errorf("failed to copy request: %w", err)
 	}
 
-	// Set the feed ID from URL parameter
-	data.FeedID = chi.URLParam(r, "topic")
+	// Set the feed ID (passed from controller after resolving key -> ID)
+	data.FeedID = feedID
 
 	// Parse JSON body if Content-Type is application/json
 	var jsonMsg ntfyMessage

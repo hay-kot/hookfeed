@@ -34,11 +34,11 @@ func Test_ParseNtfyMessage(t *testing.T) {
 
 		req := setup("test-topic", "text/plain", strings.NewReader(body))
 
-		dto, err := ParseNtfyMessage(req)
+		dto, err := ParseNtfyMessage(req, "test-feed-id")
 		require.NoError(t, err)
 
 		assert.Equal(t, body, dto.Message)
-		assert.Equal(t, "test-topic", dto.FeedID)
+		assert.Equal(t, "test-feed-id", dto.FeedID)
 		assert.Equal(t, int32(3), dto.Priority)
 
 		// Verify plain text is wrapped in $body key
@@ -57,7 +57,7 @@ func Test_ParseNtfyMessage(t *testing.T) {
 
 		req := setup("test-topic", "application/json", strings.NewReader(string(bodyBytes)))
 
-		dto, err := ParseNtfyMessage(req)
+		dto, err := ParseNtfyMessage(req, "test-feed-id")
 		require.NoError(t, err)
 
 		assert.Equal(t, msg.Message, dto.Message)
@@ -75,7 +75,7 @@ func Test_ParseNtfyMessage(t *testing.T) {
 		rctx.URLParams.Add("topic", "test-topic")
 		req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 
-		dto, err := ParseNtfyMessage(req)
+		dto, err := ParseNtfyMessage(req, "test-feed-id")
 		require.NoError(t, err)
 
 		assert.Equal(t, "Query Title", dto.Title)
@@ -97,7 +97,7 @@ func Test_ParseNtfyMessage(t *testing.T) {
 		req.Header.Set("X-Message", "Header Message")
 		req.Header.Set("X-Priority", "5")
 
-		dto, err := ParseNtfyMessage(req)
+		dto, err := ParseNtfyMessage(req, "test-feed-id")
 		require.NoError(t, err)
 
 		assert.Equal(t, "Header Title", dto.Title)
@@ -122,7 +122,7 @@ func Test_ParseNtfyMessage(t *testing.T) {
 		rctx.URLParams.Add("topic", "test-topic")
 		req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 
-		dto, err := ParseNtfyMessage(req)
+		dto, err := ParseNtfyMessage(req, "test-feed-id")
 		require.NoError(t, err)
 
 		assert.Equal(t, "Header Title", dto.Title, "headers should override query params")
@@ -157,7 +157,7 @@ func Test_ParseNtfyMessage(t *testing.T) {
 		rctx.URLParams.Add("topic", "test-topic")
 		req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 
-		dto, err := ParseNtfyMessage(req)
+		dto, err := ParseNtfyMessage(req, "test-feed-id")
 		require.NoError(t, err)
 
 		assert.Equal(t, "Query Title", dto.Title, "query params should override JSON")
@@ -182,7 +182,7 @@ func Test_ParseNtfyMessage(t *testing.T) {
 		rctx.URLParams.Add("topic", "test-topic")
 		req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 
-		dto, err := ParseNtfyMessage(req)
+		dto, err := ParseNtfyMessage(req, "test-feed-id")
 		require.NoError(t, err)
 
 		assert.Equal(t, "Title", dto.Title)
@@ -201,7 +201,7 @@ func Test_ParseNtfyMessage(t *testing.T) {
 	t.Run("default priority", func(t *testing.T) {
 		req := setup("test-topic", "", strings.NewReader("test message"))
 
-		dto, err := ParseNtfyMessage(req)
+		dto, err := ParseNtfyMessage(req, "test-feed-id")
 		require.NoError(t, err)
 
 		assert.Equal(t, int32(3), dto.Priority, "default priority should be 3")
@@ -219,7 +219,7 @@ func Test_ParseNtfyMessage(t *testing.T) {
 		rctx.URLParams.Add("topic", "test-topic")
 		req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 
-		dto, err := ParseNtfyMessage(req)
+		dto, err := ParseNtfyMessage(req, "test-feed-id")
 		require.NoError(t, err)
 
 		// Verify raw request wraps plain text
